@@ -16,15 +16,21 @@ from train import train_model
 import visualisation
 from eyePACS import EyePACS_Dataset
 
+# Load data
 dataset = EyePACS_Dataset("config.json")
 datasets_split = dataset.split_train_test_val_sets(0.6, 0.2, 0.2)
-
+# Setup dataloaders
 dataset_names = ["train", "val", "test"]
 dataset_sizes = {dataset_names[x]: len(datasets_split[x]) for x in range(len(dataset_names))}                    
 dataloaders = {dataset_names[x]: torch.utils.data.DataLoader(datasets_split[x], batch_size=164,
                                         shuffle=False, num_workers=0)
                     for x in range(len(dataset_names))}   
 dataloaders["train"].shuffle = True
+# Calc class inbalance and so loss function weights
+data_train = datasets_split[0]
+data_train_labels = dataset.labels_df.level.iloc[data_train.indices]
+data_train_class_frequency = torch.tensor(data_train_labels.value_counts())
+data_train_class_weights = min(data_train_class_frequency)/data_train_class_frequency
 
 # # Set up directory to save model data
 model_name = "resnet18"
@@ -34,9 +40,8 @@ run_directory = os.path.join("runs", model_name+ dataset_name + time.strftime("%
 # Set hyperparameters
 num_epochs = 10
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
 model = timm.create_model("resnet18", pretrained=True, num_classes=len(dataset.class_names)).to(device)
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss(weight=data_train_class_weights.to(device))
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs)
 grad_clip_norm = 1
@@ -47,7 +52,6 @@ writer = SummaryWriter(run_directory)
 # Add input images to tensorboard for sanity check
 fig = visualisation.sample_batch(dataloaders["train"], dataset.class_names)
 writer.add_figure('Input/train', fig)
-
 fig = visualisation.sample_batch(dataloaders["val"], dataset.class_names)
 writer.add_figure('Input/val', fig)
 
