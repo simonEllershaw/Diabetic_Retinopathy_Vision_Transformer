@@ -1,0 +1,37 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import io
+from PIL import Image
+import torchvision
+import torch
+import inference
+
+def imshow(inp, ax, title=None):
+    """Imshow for Tensor."""
+    inp = inp.numpy().transpose((1, 2, 0))
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+    inp = std * inp + mean
+    inp = np.clip(inp, 0, 1)
+    ax.imshow(inp)
+    if title is not None:
+        ax.set_title(title)
+
+def show_inputs(dataloader, class_names):
+    fig, ax = plt.subplots()
+    images, labels = next(iter(dataloader))
+    img_grid = torchvision.utils.make_grid(images)
+    title=[class_names[x] for x in labels]
+    imshow(img_grid, ax, title=title)
+    return fig
+
+def show_inference(dataloader, class_names, model, device):
+    images, labels = next(iter(dataloader))
+    preds, probs = inference.images_to_probs(model, images.to(device))
+    fig, axs = plt.subplots(1, len(images), sharey=True)
+    for idx in range(len(images)):
+        imshow(images[idx], axs[idx])
+        title = f"{class_names[preds[idx]]}({probs[idx] * 100.0:.1f}%) \n label:{class_names[labels[idx]]}"
+        color=("green" if preds[idx]==labels[idx].item() else "red")
+        axs[idx].set_title(title, color=color)
+    return fig
