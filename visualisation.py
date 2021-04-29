@@ -17,21 +17,18 @@ def imshow(inp, ax, title=None):
     if title is not None:
         ax.set_title(title)
 
-def show_inputs(dataloader, class_names):
-    fig, ax = plt.subplots()
+def sample_batch(dataloader, class_names, model=None, device=None, num_samples=4):
+    fig, axs = plt.subplots(1, num_samples, sharey=True)
     images, labels = next(iter(dataloader))
-    img_grid = torchvision.utils.make_grid(images)
-    title=[class_names[x] for x in labels]
-    imshow(img_grid, ax, title=title)
-    return fig
-
-def show_inference(dataloader, class_names, model, device):
-    images, labels = next(iter(dataloader))
-    preds, probs = inference.images_to_probs(model, images.to(device))
-    fig, axs = plt.subplots(1, len(images), sharey=True)
-    for idx in range(len(images)):
+    if model is not None:
+        preds, probs = inference.images_to_probs(model, images.to(device))
+    for idx in range(num_samples):
         imshow(images[idx], axs[idx])
-        title = f"{class_names[preds[idx]]}({probs[idx] * 100.0:.1f}%) \n label:{class_names[labels[idx]]}"
-        color=("green" if preds[idx]==labels[idx].item() else "red")
+        if model is None:
+            title= class_names[labels[idx]]
+            color="black"
+        else:
+            title = f"{class_names[preds[idx]]}({probs[idx] * 100.0:.1f}%) \n label:{class_names[labels[idx]]}"
+            color=("green" if preds[idx]==labels[idx].item() else "red")
         axs[idx].set_title(title, color=color)
     return fig

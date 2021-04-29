@@ -45,19 +45,20 @@ grad_clip_norm = 1
 writer = SummaryWriter(run_directory)
 
 # Add input images to tensorboard for sanity check
-# fig = visualisation.show_inputs(dataloaders["train"], dataset.class_names)
-# writer.add_figure('Input/train', fig)
-# fig = visualisation.show_inputs(dataloaders["val"], dataset.class_names)
-# writer.add_figure('Input/val', fig)
+fig = visualisation.sample_batch(dataloaders["train"], dataset.class_names)
+writer.add_figure('Input/train', fig)
+
+fig = visualisation.sample_batch(dataloaders["val"], dataset.class_names)
+writer.add_figure('Input/val', fig)
 
 # Main training loop
 model, best_acc = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, writer, run_directory, grad_clip_norm)
 
 # Add sample inference outputs to tensorboard
-# fig = visualisation.show_inference(dataloaders["train"], dataset.class_names, model, device)
-# writer.add_figure('Inference/train', fig)
-# fig = visualisation.show_inference(dataloaders["val"], dataset.class_names, model, device)
-# writer.add_figure('Inference/val', fig)
+fig = visualisation.sample_batch(dataloaders["train"], dataset.class_names, model, device)
+writer.add_figure('Inference/train', fig)
+fig = visualisation.sample_batch(dataloaders["val"], dataset.class_names, model, device)
+writer.add_figure('Inference/val', fig)
 
 writer.close()
 
