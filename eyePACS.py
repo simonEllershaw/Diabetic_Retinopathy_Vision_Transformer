@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 import torchvision
 import transforms
 import cv2
-from transforms import GrahamPreprocessingCV2
+from transforms import GrahamPreprocessing
 import random
 
 # Test 
@@ -41,7 +41,7 @@ class EyePACS_Dataset(Dataset):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if self.augment:
             img = self.augmentation(img)
-        img = GrahamPreprocessingCV2(img)
+        img = GrahamPreprocessing(img)
         img = cv2.resize(img, (224,224))
         img = np.divide(img, 255.0, dtype=np.float32)
         img = torch.from_numpy(img).permute(2, 0, 1)
@@ -60,7 +60,7 @@ class EyePACS_Dataset(Dataset):
         translation_matrix = np.float32(([[1,0,translation_x],[0,1,translation_y]]))
         img = cv2.warpAffine(img,translation_matrix,(cols,rows))
         # Random rotation
-        angle = random.random()*45
+        angle = random.random()*360
         rotation_matrix = cv2.getRotationMatrix2D((cols/2,rows/2), random.uniform(-1, 1)*45, 1)
         return cv2.warpAffine(img,rotation_matrix,(cols,rows))
 
