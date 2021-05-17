@@ -1,11 +1,12 @@
 import time
 import torch
 import os
+import metrics
 
 #https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 
-def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, writer, run_directory, grad_clip_norm=0):
-    best_acc = 0.0
+def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, grad_clip_norm=0):
+    best_kappa = 0.0
     model_param_fname = os.path.join(run_directory, "model_params.pt")
 
     for epoch in range(1, num_epochs+1):
@@ -18,7 +19,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 model.eval()   # Set model to evaluate mode
 
             running_loss = 0.0
-            running_corrects = 0
+            confusion_matrix = torch.zeros(nb_classes, nb_classes)
 
             # Iterate over data.
             for inputs, labels in dataloaders[phase]:
@@ -44,25 +45,37 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                confusion_matrix = update_conf_matrix(confusion_matrix, labels, preds)
             if phase == 'train':
                 writer.add_scalar(tag="general/lr", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
                 scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects.double() / dataset_sizes[phase]
+            epoch_acc = metrics.calc_accuracy(confusion_matrix)
+            epoch_f1_macro = metrics.calc_macro_f1_score(confusion_matrix)
+            epoch_kappa = metrics.calc_weighted_quadratic_kappa(confusion_matrix)
 
             writer.add_scalar(tag=phase + "/loss", scalar_value=epoch_loss, global_step=epoch)
             writer.add_scalar(tag=phase + "/acc", scalar_value=epoch_acc, global_step=epoch)
+            writer.add_scalar(tag=phase + "/f1_macro", scalar_value=epoch_f1_macro, global_step=epoch)
+            writer.add_scalar(tag=phase + "/kappa", scalar_value=epoch_kappa, global_step=epoch)
 
             # deep copy the model
-            if phase == 'val' and epoch_acc > best_acc:
-                best_acc = epoch_acc
+            if phase == 'val' and epoch_kappa > best_kappa:
+                best_kappa = epoch_kappa
                 torch.save(model.state_dict(), model_param_fname)
         
         writer.add_scalar(tag="general/time", scalar_value=time.time()-epoch_start_time, global_step=epoch)
 
-        model.load_state_dict(torch.load(model_param_fname))
-        model.eval()
+    model.load_state_dict(torch.load(model_param_fname))
+    model.eval()
 
-    return model, best_acc
+    return model, best_kappa
+
+def update_conf_matrix(confusion_matrix, labels, preds):
+    for l, p in zip(labels.view(-1), preds.view(-1)):
+        confusion_matrix[l, p] += 1
+    return confusion_matrix
+
+
+
