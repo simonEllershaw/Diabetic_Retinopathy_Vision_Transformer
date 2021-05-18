@@ -55,8 +55,8 @@ class EyePACS_Dataset(Dataset):
             img = cv2.flip(img, flip_code)
         rows, cols, _ = img.shape
         # Random translation
-        translation_x = random.uniform(-1, 1)*0.05*img.shape[0] 
-        translation_y = random.uniform(-1, 1)*0.05*img.shape[1]
+        translation_x = random.uniform(-1, 1)*0.2*img.shape[0] 
+        translation_y = random.uniform(-1, 1)*0.2*img.shape[1]
         translation_matrix = np.float32(([[1,0,translation_x],[0,1,translation_y]]))
         img = cv2.warpAffine(img,translation_matrix,(cols,rows))
         # Random rotation
@@ -75,7 +75,7 @@ class EyePACS_Dataset(Dataset):
         return dataset_train, dataset_val, dataset_test
                 
 if __name__ == "__main__":
-    data = EyePACSCV2_Dataset("config.json")
+    data = EyePACS_Dataset("config.json")
     data.augment = True
     print(len(data))
     # for i in range(10):
