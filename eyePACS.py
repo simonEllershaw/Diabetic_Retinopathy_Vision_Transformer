@@ -21,15 +21,16 @@ class EyePACS_Dataset(Dataset):
         # Load and extract config variables
         with open(config_fname) as json_file:
             config = json.load(json_file)["eyePACS"]
-        self.labels_df = pd.read_csv(config["label_file"])
-        self.img_dir = config["img_dir"]
-        self.class_names = config["class_names"]
+        labels_fname = os.path.join("diabetic-retinopathy-detection", "trainLabels.csv", "trainLabels.csv")
+        self.labels_df = pd.read_csv(labels_fname)
+        self.img_dir = os.path.join("diabetic-retinopathy-detection", "train", "train")
+        self.class_names = ["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
 
     def __len__(self):
-        # return 100
-        return len(self.labels_df)
+        return 800
+        # return len(self.labels_df)
 
     def __getitem__(self, idx):
         # Extract sample's metadata
