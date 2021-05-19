@@ -1,0 +1,4 @@
+timm
+matplotlib
+pandas
+opencv-python
