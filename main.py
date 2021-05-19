@@ -1,6 +1,7 @@
 import os
 import time
 import pickle
+import sys
 
 import timm
 from torch.utils.data import Dataset 
@@ -31,7 +32,8 @@ if __name__ == "__main__":
 
     # Load data
     dataset_names = ["train", "val", "test"]
-    dataset = EyePACS_Dataset("config.json")
+    data_directory = sys.argv[1]
+    dataset = EyePACS_Dataset(data_directory)
     class_names = dataset.class_names
 
     datasets_split = dataset.split_train_test_val_sets(0.6, 0.2, 0.2)
