@@ -27,8 +27,8 @@ class EyePACS_Dataset(Dataset):
         self.augment = False        
 
     def __len__(self):
-        return 800
-        # return len(self.labels_df)
+        # return 800
+        return len(self.labels_df)
 
     def __getitem__(self, idx):
         # Extract sample's metadata
@@ -75,7 +75,7 @@ class EyePACS_Dataset(Dataset):
                 
 if __name__ == "__main__":
     data = EyePACS_Dataset("config.json")
-    data.augment = True
+    data.augment = False
     print(len(data))
     # for i in range(10):
     #     start_time = time.time()
