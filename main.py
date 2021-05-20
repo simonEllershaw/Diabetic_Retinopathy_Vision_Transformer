@@ -25,7 +25,7 @@ from torchvision import transforms, datasets
 
 if __name__ == "__main__":
     # Set up directory for experiment
-    model_name = "resnet18"
+    model_name = "resnet50"
     dataset_name = "_eyePACS_"
     run_directory = os.path.join("runs", model_name+ dataset_name + time.strftime("%m_%d_%H_%M_%S"))
     os.mkdir(run_directory)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
         pickle.dump(dataset_indicies, index_file)
 
     # # Setup dataloaders
-    batch_size= 164
+    batch_size= 200
     dataset_sizes = {dataset_names[x]: len(datasets_split[x]) for x in range(len(dataset_names))}                    
     dataloaders = {dataset_names[x]: torch.utils.data.DataLoader(datasets_split[x], batch_size=batch_size,
                                             shuffle=False, num_workers=4)
@@ -60,11 +60,11 @@ if __name__ == "__main__":
     # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    drop_out_rate = 0.5
-    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_block_rate=drop_out_rate).to(device)
+    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
     criterion = nn.CrossEntropyLoss(weight=data_train_class_weights.to(device))
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs)
+    warmup_steps = scheduler.warmup_steps
     grad_clip_norm = 1
 
     # Init tensorboard
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     writer.add_figure('Input/val', fig)
 
     # # Main training loop
-    model, best_acc = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, run_directory, grad_clip_norm)
+    model, best_acc = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, run_directory, warmup_steps, grad_clip_norm)
 
     # Add sample inference outputs to tensorboard
     fig = visualisation.sample_batch(dataloaders["train"], class_names, model, device)
