@@ -8,9 +8,9 @@ class WarmupCosineSchedule(LambdaLR):
         Decreases learning rate from 1. to 0. over remaining `t_total - warmup_steps` steps         following a cosine curve.
         If `cycles` (default=0.5) is different from default, learning rate follows cosine function after warmup.
     """
-    def __init__(self, optimizer, t_total, cycles=.5, last_epoch=-1):
+    def __init__(self, optimizer, t_total, warmup_steps, cycles=.5, last_epoch=-1):
         self.t_total = t_total
-        self.warmup_steps = min(100, t_total // 10)
+        self.warmup_steps = warmup_steps
         self.cycles = cycles
         super(WarmupCosineSchedule, self).__init__(optimizer, self.lr_lambda, last_epoch=last_epoch)
 
