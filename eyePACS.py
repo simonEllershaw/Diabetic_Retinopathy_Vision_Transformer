@@ -10,6 +10,7 @@ import transforms
 import cv2
 from transforms import GrahamPreprocessing
 import random
+from PIL import Image
 
 # Test 
 import visualisation
@@ -27,8 +28,8 @@ class EyePACS_Dataset(Dataset):
         self.augment = False        
 
     def __len__(self):
-        # return 800
-        return len(self.labels_df)
+        return 5000
+        # return len(self.labels_df)
 
     def __getitem__(self, idx):
         # Extract sample's metadata
@@ -36,32 +37,61 @@ class EyePACS_Dataset(Dataset):
         label = metadata.level
         # Load and transform img
         img_path = os.path.join(self.img_dir, metadata.image + ".jpeg")
-        img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = Image.open(img_path)
         if self.augment:
             img = self.augmentation(img)
-        img = GrahamPreprocessing(img)
-        img = cv2.resize(img, (224,224))
-        img = np.divide(img, 255.0, dtype=np.float32)
-        img = torch.from_numpy(img).permute(2, 0, 1)
-        # Return sample
+        img = self.preprocess_image(img)
         return img, label
+
+    def preprocess_image(self, img):
+        # img = GrahamPreprocessing(np.array(img))
+        # Crop image according to bounding box
+        left, top, box_size = self.calc_cropbox_dim(img)
+        img = torchvision.transforms.functional.crop(img, top, left, box_size, box_size)
+        # Resize and convert to tensor
+        preprocessing_transforms = torchvision.transforms.Compose([
+            torchvision.transforms.Resize(224),
+            torchvision.transforms.ToTensor()
+        ])
+        return preprocessing_transforms(img)
+
+    def calc_cropbox_dim(self, img):
+        # Sum over colour channels and threshold to give
+        # segmentation map. Only look at every 100th row/col
+        # to reduce compute at cost of accuracy
+        stride = 100
+        img_np = np.array(img)[::stride,::stride].sum(2) 
+        img_np = np.where(img_np>img_np.mean()/5, 1, 0)
+        # Find nonzero rows and columns (convert back to org indexing)
+        non_zero_rows = np.nonzero(img_np.sum(1))[0]*stride
+        non_zero_columns = np.nonzero(img_np.sum(0))[0]*stride
+        # Boundaries given first and last non zero rows/columns
+        boundary_coords = np.zeros((2,2))
+        boundary_coords[:, 0] = non_zero_columns[[0, -1]] # x coords
+        boundary_coords[:, 1] = non_zero_rows[[0, -1]] # y coords
+        # Center is middle of the non zero values
+        center = np.zeros(2)
+        center[0], center[1] = np.median(non_zero_columns), np.median(non_zero_rows)
+        # Radius is max boundary difference, add stride to conservatively account
+        # for uncertainity due to it's use
+        radius = (max(boundary_coords[1] - boundary_coords[0])/2)+stride
+        top_left_coord = np.round((center - radius))
+        return top_left_coord[0], top_left_coord[1], round(radius*2)
     
     def augmentation(self, img):
-        # Random flip
-        flip_code = random.randrange(-1,2) # -1 both, 0 x-axis, 1 y-axis, 2 none
-        if flip_code < 2:
-            img = cv2.flip(img, flip_code)
-        rows, cols, _ = img.shape
-        # Random translation
-        translation_x = random.uniform(-1, 1)*0.2*img.shape[0] 
-        translation_y = random.uniform(-1, 1)*0.2*img.shape[1]
-        translation_matrix = np.float32(([[1,0,translation_x],[0,1,translation_y]]))
-        img = cv2.warpAffine(img,translation_matrix,(cols,rows))
-        # Random rotation
-        angle = random.random()*360
-        rotation_matrix = cv2.getRotationMatrix2D((cols/2,rows/2), random.uniform(-1, 1)*45, 1)
-        return cv2.warpAffine(img,rotation_matrix,(cols,rows))
+        # Pad image so that image is not augment out of frame
+        width, height = img.size
+        padded_img_size = round(max(height,width)*1.1)
+        padding_tb = (padded_img_size-height)//2
+        padding_lr = (padded_img_size-width)//2
+        # Apply standard data augmentations
+        augment_transforms = torchvision.transforms.Compose([
+            torchvision.transforms.Pad((padding_lr, padding_tb)),
+            torchvision.transforms.RandomHorizontalFlip(),
+            torchvision.transforms.RandomVerticalFlip(),
+            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2)),
+        ])
+        return augment_transforms(img)
 
     def split_train_test_val_sets(self, prop_train, prop_val, prop_test):
         # Calc split in terms of num samples instead of proportions
@@ -74,8 +104,8 @@ class EyePACS_Dataset(Dataset):
         return dataset_train, dataset_val, dataset_test
                 
 if __name__ == "__main__":
-    data = EyePACS_Dataset("config.json")
-    data.augment = False
+    data = EyePACS_Dataset("diabetic-retinopathy-detection")
+    data.augment = True
     print(len(data))
     # for i in range(10):
     #     start_time = time.time()
@@ -86,6 +116,10 @@ if __name__ == "__main__":
     # data = data[2]
     # print(time.time()-start_time)
     fig, ax = plt.subplots()
-    idx = 10
+    idx = 64
+    start_time = time.time()
+    sample = data[idx][0]
+    print(time.time()-start_time)
     visualisation.imshow(data[idx][0], ax)
     plt.show()
+
