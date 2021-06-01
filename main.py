@@ -37,7 +37,7 @@ if __name__ == "__main__":
     class_names = dataset.class_names
 
     datasets_split = dataset.split_train_test_val_sets(0.6, 0.2, 0.2)
-    datasets_split[0].augment=True
+    datasets_split[0].augment=False
 
     dataset_indicies = {dataset_names[i]: datasets_split[i].indices for i in range(len(datasets_split))}
     with open(os.path.join(run_directory, "dataset_indexes.pkl"), "wb+") as index_file:
@@ -55,7 +55,8 @@ if __name__ == "__main__":
     data_train = datasets_split[0]
     data_train_labels = dataset.labels_df.level.iloc[data_train.indices]
     data_train_class_frequency = torch.tensor(data_train_labels.value_counts(sort=False))
-    data_train_class_weights = 1/data_train_class_frequency
+    data_train_class_proportions = data_train_class_frequency/len(data_train)
+    data_train_class_weights = 1 / (data_train_class_proportions * len(class_names))
 
     # Set hyperparameters
     num_epochs = 100

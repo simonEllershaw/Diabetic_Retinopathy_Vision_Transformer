@@ -28,8 +28,8 @@ class EyePACS_Dataset(Dataset):
         self.augment = False        
 
     def __len__(self):
-        return 5000
-        # return len(self.labels_df)
+        # return 100
+        return len(self.labels_df)
 
     def __getitem__(self, idx):
         # Extract sample's metadata
