@@ -3,15 +3,13 @@ import numpy as np
 import math
 import cv2  
 
-def GrahamPreprocessing(image):
-    radius_scaled = 500       
-    radius_intial = estimate_radius(image)
-    radius_intial = radius_scaled if radius_intial == 0 else radius_intial
+def GrahamPreprocessing(image, radius_intial):
+    radius_scaled = 300       
     image = rescale_image(image, radius_intial, radius_scaled)
     image = subtract_average_local_colour(image)
     radius_boundary = round(radius_scaled*0.9)
     image = threshold_boundary(image, radius_boundary)
-    image = crop_image(image, radius_boundary)
+    # image = crop_image(image, radius_boundary)
     return image
 
 def estimate_radius(image):
