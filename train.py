@@ -2,11 +2,12 @@ import time
 import torch
 import os
 import metrics
+import visualisation
 
 #https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 
 def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, grad_clip_norm=0):
-    best_kappa = float('-inf')
+    best_loss = float('inf')
     model_param_fname = os.path.join(run_directory, "model_params.pt")
     num_epochs_no_improvement = 0
 
@@ -55,29 +56,31 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
             epoch_acc = metrics.calc_accuracy(confusion_matrix)
             epoch_f1_macro = metrics.calc_macro_f1_score(confusion_matrix)
             epoch_kappa = metrics.calc_weighted_quadratic_kappa(confusion_matrix)
+            confusion_matrix_vis = visualisation.plot_confusion_matrix(confusion_matrix, list(range(outputs.size(1))))
 
+            writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=epoch)
             writer.add_scalar(tag=phase + "/loss", scalar_value=epoch_loss, global_step=epoch)
             writer.add_scalar(tag=phase + "/acc", scalar_value=epoch_acc, global_step=epoch)
             writer.add_scalar(tag=phase + "/f1_macro", scalar_value=epoch_f1_macro, global_step=epoch)
             writer.add_scalar(tag=phase + "/kappa", scalar_value=epoch_kappa, global_step=epoch)
 
             # deep copy the model
-            if phase == 'val' and epoch_kappa > best_kappa:
-                best_kappa = epoch_kappa
-                torch.save(model.state_dict(), model_param_fname)
-                num_epochs_no_improvement = 0
-            elif epoch > warmup_steps:
-                num_epochs_no_improvement += 1
-       
+            if phase == 'val':
+                if epoch_loss < best_loss:
+                    best_loss = epoch_loss
+                    torch.save(model.state_dict(), model_param_fname)
+                    num_epochs_no_improvement = 0
+                elif epoch > warmup_steps:
+                    num_epochs_no_improvement += 1
+            
         writer.add_scalar(tag="general/time", scalar_value=time.time()-epoch_start_time, global_step=epoch)
-        
         if num_epochs_no_improvement == num_epochs_to_converge:
             break
 
     model.load_state_dict(torch.load(model_param_fname))
     model.eval()
 
-    return model, best_kappa
+    return model, best_loss
 
 def update_conf_matrix(confusion_matrix, labels, preds):
     for l, p in zip(labels.view(-1), preds.view(-1)):

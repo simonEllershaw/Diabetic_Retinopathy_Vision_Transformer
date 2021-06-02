@@ -5,6 +5,7 @@ from PIL import Image
 import torchvision
 import torch
 import inference
+import itertools
 
 def imshow(inp, ax, title=None):
     """Imshow for Tensor."""
@@ -28,3 +29,33 @@ def sample_batch(dataloader, class_names, model=None, device=None, num_samples=4
             color=("green" if preds[idx]==labels[idx].item() else "red")
         axs[idx].set_title(title, color=color)
     return fig
+
+def plot_confusion_matrix(cm, class_names):
+    # https://towardsdatascience.com/exploring-confusion-matrix-evolution-on-tensorboard-e66b39f4ac12
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+    
+    Args:
+       cm (array, shape = [n, n]): a confusion matrix of integer classes
+       class_names (array, shape = [n]): String names of the integer classes
+    """
+    
+    figure = plt.figure(figsize=(8, 8))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title("Confusion matrix")
+    plt.colorbar()
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names)
+    plt.yticks(tick_marks, class_names)
+       
+    # Use white text if squares are dark; otherwise black.
+    threshold = cm.max() / 2.
+    
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        color = "white" if cm[i, j] > threshold else "black"
+        plt.text(j, i, cm[i, j].item(), horizontalalignment="center", color=color)
+        
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    return figure
