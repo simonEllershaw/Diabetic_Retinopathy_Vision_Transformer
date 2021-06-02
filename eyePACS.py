@@ -28,8 +28,8 @@ class EyePACS_Dataset(Dataset):
         self.augment = False        
 
     def __len__(self):
-        # return 100
-        return len(self.labels_df)
+        return 1000
+        # return len(self.labels_df)
 
     def __getitem__(self, idx):
         # Extract sample's metadata
@@ -41,13 +41,14 @@ class EyePACS_Dataset(Dataset):
         if self.augment:
             img = self.augmentation(img)
         img = self.preprocess_image(img)
-        return img, label
+        return img, label, metadata.image
 
     def preprocess_image(self, img):
-        # img = GrahamPreprocessing(np.array(img))
         # Crop image according to bounding box
-        left, top, box_size = self.calc_cropbox_dim(img)
+        left, top, box_size, radius = self.calc_cropbox_dim(img)
         img = torchvision.transforms.functional.crop(img, top, left, box_size, box_size)
+        img = GrahamPreprocessing(np.array(img), radius)
+        img = Image.fromarray(img)
         # Resize and convert to tensor
         preprocessing_transforms = torchvision.transforms.Compose([
             torchvision.transforms.Resize(224),
@@ -76,7 +77,7 @@ class EyePACS_Dataset(Dataset):
         # for uncertainity due to it's use
         radius = (max(boundary_coords[1] - boundary_coords[0])/2)+stride
         top_left_coord = np.round((center - radius))
-        return top_left_coord[0], top_left_coord[1], round(radius*2)
+        return top_left_coord[0], top_left_coord[1], round(radius*2), radius
     
     def augmentation(self, img):
         # Pad image so that image is not augment out of frame

@@ -24,7 +24,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
             confusion_matrix = torch.zeros(nb_classes, nb_classes)
 
             # Iterate over data.
-            for inputs, labels in dataloaders[phase]:
+            for inputs, labels, _ in dataloaders[phase]:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
