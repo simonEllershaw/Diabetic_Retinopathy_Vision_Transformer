@@ -16,13 +16,13 @@ def imshow(inp, ax, title=None):
 
 def sample_batch(dataloader, class_names, model=None, device=None, num_samples=4):
     fig, axs = plt.subplots(1, num_samples, sharey=True)
-    images, labels = next(iter(dataloader))
+    images, labels, fnames = next(iter(dataloader))
     if model is not None:
         preds, probs = inference.images_to_probs(model, images.to(device))
     for idx in range(num_samples):
         imshow(images[idx], axs[idx])
         if model is None:
-            title= class_names[labels[idx]]
+            title= class_names[labels[idx]] + " " + path[idx]
             color="black"
         else:
             title = f"{class_names[preds[idx]]}({probs[idx] * 100.0:.1f}%) \n label:{class_names[labels[idx]]}"
