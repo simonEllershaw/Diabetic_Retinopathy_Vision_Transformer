@@ -7,7 +7,7 @@ import visualisation
 #https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 
 def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, grad_clip_norm=0):
-    best_loss = float('inf')
+    best_kappa = float('-inf')
     model_param_fname = os.path.join(run_directory, "model_params.pt")
     num_epochs_no_improvement = 0
 
@@ -66,8 +66,8 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
 
             # deep copy the model
             if phase == 'val':
-                if epoch_loss < best_loss:
-                    best_loss = epoch_loss
+                if epoch_kappa > best_kappa:
+                    best_kappa = epoch_kappa
                     torch.save(model.state_dict(), model_param_fname)
                     num_epochs_no_improvement = 0
                 elif epoch > warmup_steps:
@@ -80,7 +80,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
     model.load_state_dict(torch.load(model_param_fname))
     model.eval()
 
-    return model, best_loss
+    return model, best_kappa
 
 def update_conf_matrix(confusion_matrix, labels, preds):
     for l, p in zip(labels.view(-1), preds.view(-1)):
