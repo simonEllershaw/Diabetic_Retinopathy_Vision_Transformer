@@ -55,18 +55,25 @@ if __name__ == "__main__":
     data_train = datasets_split[0]
     data_train_labels = dataset.labels_df.level.iloc[data_train.indices]
     data_train_class_frequency = torch.tensor(data_train_labels.value_counts(sort=False))
-    data_train_class_proportions = data_train_class_frequency/len(data_train)
-    data_train_class_weights = 1 / (data_train_class_proportions * len(class_names))
+    # data_train_class_weights = (1 / data_train_class_frequency) * (len(data_train) / len(class_names))
+
+    weight = 1. / data_train_class_frequency
+    samples_weight = weight[data_train_labels.values]
+    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+    
+    dataloaders["train"] = torch.utils.data.DataLoader(
+        data_train, batch_size=batch_size, num_workers=4, sampler=sampler)
+    dataloaders["train"].shuffle = True
 
     # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
-    criterion = nn.CrossEntropyLoss(weight=data_train_class_weights.to(device))
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    criterion = nn.CrossEntropyLoss()#weight=data_train_class_weights.to(device))
+    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
     warmup_steps = 5
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 3
+    num_epochs_to_converge = 5
     grad_clip_norm = 1
 
     # Init tensorboard
