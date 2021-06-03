@@ -22,7 +22,7 @@ def sample_batch(dataloader, class_names, model=None, device=None, num_samples=4
     for idx in range(num_samples):
         imshow(images[idx], axs[idx])
         if model is None:
-            title= class_names[labels[idx]] + " " + path[idx]
+            title= class_names[labels[idx]] + " " + fnames[idx]
             color="black"
         else:
             title = f"{class_names[preds[idx]]}({probs[idx] * 100.0:.1f}%) \n label:{class_names[labels[idx]]}"
