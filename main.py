@@ -30,43 +30,49 @@ if __name__ == "__main__":
     run_directory = os.path.join("runs", model_name+ dataset_name + time.strftime("%m_%d_%H_%M_%S"))
     os.mkdir(run_directory)
 
-    # Load data
+    # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]
-    data_directory = sys.argv[1]
-    dataset = EyePACS_Dataset(data_directory)
-    class_names = dataset.class_names
+    data_directory = "diabetic-retinopathy-detection" #sys.argv[1]
+    dataset_proportions = np.array([0.6, 0.3, 0.1])
+    datasets = EyePACS_Dataset.create_train_val_test_datasets(data_directory, dataset_proportions, dataset_names)
+    datasets["train"].augment=True
+    class_names = datasets["train"].class_names
+    dataset_indicies = {name: datasets[name].indices for name in dataset_names}
+    # with open(os.path.join(run_directory, "dataset_indexes.pkl"), "wb+") as index_file:
+    #     pickle.dump(dataset_indicies, index_file)
 
-    datasets_split = dataset.split_train_test_val_sets(0.6, 0.2, 0.2)
-    datasets_split[0].augment=False
-
-    dataset_indicies = {dataset_names[i]: datasets_split[i].indices for i in range(len(datasets_split))}
-    with open(os.path.join(run_directory, "dataset_indexes.pkl"), "wb+") as index_file:
-        pickle.dump(dataset_indicies, index_file)
-
-    # # Setup dataloaders
-    batch_size= 100
-    dataset_sizes = {dataset_names[x]: len(datasets_split[x]) for x in range(len(dataset_names))}                    
-    dataloaders = {dataset_names[x]: torch.utils.data.DataLoader(datasets_split[x], batch_size=batch_size,
-                                            shuffle=False, num_workers=4)
-                        for x in range(len(dataset_names))}   
+    # Setup dataloaders
+    batch_size= 64
+    num_workers = 4
+    dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
+    dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=batch_size,
+                                            shuffle=False, num_workers=num_workers)
+                        for name in dataset_names}   
     dataloaders["train"].shuffle = True
     
-    # # Calc class inbalance and so loss function weights
-    data_train = datasets_split[0]
-    data_train_labels = dataset.labels_df.level.iloc[data_train.indices]
+    # Calc class inbalance and so loss function weights
+    data_train_labels = datasets["train"].get_labels()
     data_train_class_frequency = torch.tensor(data_train_labels.value_counts(sort=False))
-    data_train_class_proportions = data_train_class_frequency/len(data_train)
-    data_train_class_weights = 1 / (data_train_class_proportions * len(class_names))
+    # data_train_class_weights = (1 / data_train_class_frequency) * (len(datasets["train"]) / len(class_names))
+    
+    weight = 1. / data_train_class_frequency
+    samples_weight = weight[data_train_labels.values]
+    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+    
+    dataloaders["train"] = torch.utils.data.DataLoader(
+        datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
+    dataloaders["train"].shuffle = True
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
-    criterion = nn.CrossEntropyLoss(weight=data_train_class_weights.to(device))
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    criterion = nn.CrossEntropyLoss()#weight=data_train_class_weights.to(device))
+    optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
     warmup_steps = 5
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 3
+    num_epochs_to_converge = 5
     grad_clip_norm = 1
 
     # Init tensorboard
