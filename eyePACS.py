@@ -11,6 +11,7 @@ import cv2
 from transforms import GrahamPreprocessing
 import random
 from PIL import Image
+import sys
 
 # Test 
 import visualisation
@@ -112,8 +113,9 @@ class EyePACS_Dataset(Dataset):
                 
 if __name__ == "__main__":
     start_time = time.time()
-    data = EyePACS_Dataset("diabetic-retinopathy-detection")
-    # data.preprocess_all_images()
+    data_directory = sys.argv[1]
+    data = EyePACS_Dataset(data_directory)
+    data.preprocess_all_images()
     # print(time.time()-start_time)
 
     # data.augment = True
@@ -126,11 +128,11 @@ if __name__ == "__main__":
     # start_time = time.time()
     # data = data[2]
     # print(time.time()-start_time)
-    fig, ax = plt.subplots()
-    idx = 12
-    start_time = time.time()
-    sample = data[idx]
-    print(time.time()-start_time)
-    visualisation.imshow(sample[0], ax)
-    plt.show()
+    # fig, ax = plt.subplots()
+    # idx = 12
+    # start_time = time.time()
+    # sample = data[idx]
+    # print(time.time()-start_time)
+    # visualisation.imshow(sample[0], ax)
+    # plt.show()
 
