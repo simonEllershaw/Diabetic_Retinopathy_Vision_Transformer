@@ -18,20 +18,26 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, indices=None):
+    def __init__(self, data_directory, indices=None, max_length=None):
         # Load and extract config variables
         labels_fname = os.path.join(data_directory, "trainLabels.csv", "trainLabels.csv")
         self.labels_df = pd.read_csv(labels_fname)
-        self.indices = indices if indices is not None else np.arange(len(self.labels_df))
+        if indices is not None:
+            self.indices = indices
+        elif max_length is not None:
+            self.indices = np.arange(max_length)
+        else:
+            self.indices = np.arange(len(self.labels_df))
+        self.data_directory = data_directory
         self.img_dir = os.path.join(data_directory, "train", "train")
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
         self.class_names = ["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
 
     def __len__(self):
-        return min(1000, len(self.indices))
-        # return len(self.indices)
+        return len(self.indices)
 
     def __getitem__(self, index):
         # Extract sample's metadata
@@ -39,9 +45,8 @@ class EyePACS_Dataset(Dataset):
         metadata = self.labels_df.loc[idx]
         label = metadata.level
         # Load and transform img
-        img_path = os.path.join(self.img_dir, metadata.image + ".jpeg")
+        img_path = os.path.join(self.img_dir_preprocessed, metadata.image + ".jpeg")
         img = Image.open(img_path)
-        img = self.preprocess_image(img)
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor().__call__(img)
@@ -56,6 +61,15 @@ class EyePACS_Dataset(Dataset):
         img = torchvision.transforms.functional.crop(img, top, left, box_size, box_size)
         img = torchvision.transforms.Resize((self.img_size, self.img_size)).forward(img)
         return img
+
+    def preprocess_all_images(self):
+        if not os.path.exists(self.img_dir_preprocessed):
+            os.makedirs(self.img_dir_preprocessed)
+        for idx in self.indices:
+            fname = self.labels_df.loc[idx].image + ".jpeg"
+            img = Image.open(os.path.join(self.img_dir, fname))
+            img = self.preprocess_image(img)
+            img.save(os.path.join(self.img_dir_preprocessed, fname))
 
     def calc_cropbox_dim(self, img):
         # Sum over colour channels and threshold to give
@@ -88,8 +102,8 @@ class EyePACS_Dataset(Dataset):
         ])
         return augment_transforms(img)
 
-    def create_train_val_test_datasets(data_directory, proportions, dataset_names):
-        full_dataset = EyePACS_Dataset(data_directory)
+    def create_train_val_test_datasets(data_directory, proportions, dataset_names, max_length=None):
+        full_dataset = EyePACS_Dataset(data_directory, max_length=max_length)
         indicies = np.arange(len(full_dataset))
         np.random.shuffle(indicies)
         proportions = (proportions*len(indicies)).astype(int)
@@ -97,9 +111,13 @@ class EyePACS_Dataset(Dataset):
         return {dataset_names[i]: EyePACS_Dataset(data_directory, split_indicies[i]) for i in range(len(split_indicies))}
                 
 if __name__ == "__main__":
+    start_time = time.time()
     data = EyePACS_Dataset("diabetic-retinopathy-detection")
-    data.augment = True
-    print(len(data))
+    # data.preprocess_all_images()
+    # print(time.time()-start_time)
+
+    # data.augment = True
+    # print(len(data))
     # for i in range(10):
     #     start_time = time.time()
     #     x = data[i]
@@ -109,7 +127,7 @@ if __name__ == "__main__":
     # data = data[2]
     # print(time.time()-start_time)
     fig, ax = plt.subplots()
-    idx = 2561
+    idx = 12
     start_time = time.time()
     sample = data[idx]
     print(time.time()-start_time)
