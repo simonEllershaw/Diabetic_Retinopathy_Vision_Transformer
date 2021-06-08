@@ -33,9 +33,9 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]
     data_directory = "diabetic-retinopathy-detection" #sys.argv[1]
-    dataset_proportions = np.array([0.6, 0.3, 0.1])
-    datasets = EyePACS_Dataset.create_train_val_test_datasets(data_directory, dataset_proportions, dataset_names)
-    datasets["train"].augment=True
+    dataset_proportions = np.array([0.6, 0.2, 0.2])
+    datasets = EyePACS_Dataset.create_train_val_test_datasets(data_directory, dataset_proportions, dataset_names, max_length=1000)
+    datasets["train"].augment=False
     class_names = datasets["train"].class_names
     dataset_indicies = {name: datasets[name].indices for name in dataset_names}
     # with open(os.path.join(run_directory, "dataset_indexes.pkl"), "wb+") as index_file:
@@ -68,9 +68,9 @@ if __name__ == "__main__":
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
-    criterion = nn.CrossEntropyLoss()#weight=data_train_class_weights.to(device))
-    optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
-    warmup_steps = 5
+    criterion = nn.CrossEntropyLoss(weight=weight.to(device))
+    optimizer = optim.SGD(model.parameters(), lr=0.03, momentum=0.9)
+    warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
     num_epochs_to_converge = 5
     grad_clip_norm = 1
