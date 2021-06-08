@@ -39,6 +39,7 @@ def plot_confusion_matrix(cm, class_names):
        cm (array, shape = [n, n]): a confusion matrix of integer classes
        class_names (array, shape = [n]): String names of the integer classes
     """
+    cm_fract = cm/(cm.sum(1, keepdim=True))
     
     figure = plt.figure(figsize=(8, 8))
     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
@@ -53,9 +54,14 @@ def plot_confusion_matrix(cm, class_names):
     
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         color = "white" if cm[i, j] > threshold else "black"
-        plt.text(j, i, cm[i, j].item(), horizontalalignment="center", color=color)
+        plt.text(j, i, f"{cm[i, j].item()}({cm_fract[i, j].item():.2f})", horizontalalignment="center", color=color)
         
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     return figure
+
+if __name__ == "__main__":
+    cm = torch.tensor([[1,4],[3,3]])
+    plot_confusion_matrix(cm, ["0", "1"])
+    plt.show()
