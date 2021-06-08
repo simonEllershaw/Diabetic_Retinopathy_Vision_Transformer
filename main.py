@@ -56,13 +56,13 @@ if __name__ == "__main__":
     # data_train_class_weights = (1 / data_train_class_frequency) * (len(datasets["train"]) / len(class_names))
     
     weight = 1. / data_train_class_frequency
-    samples_weight = weight[data_train_labels.values]
-    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+    # samples_weight = weight[data_train_labels.values]
+    # sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
     
-    dataloaders["train"] = torch.utils.data.DataLoader(
-        datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
-    dataloaders["train"].shuffle = True
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # dataloaders["train"] = torch.utils.data.DataLoader(
+    #     datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
+    # dataloaders["train"].shuffle = True
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Set hyperparameters
     num_epochs = 100
