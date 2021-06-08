@@ -25,3 +25,8 @@ def calc_weighted_quadratic_kappa(confusion_matrix):
 
     k = torch.sum(w_mat * confusion_matrix) / torch.sum(w_mat * expected)
     return 1 - k.item()
+
+if __name__ == "__main__":
+    cm = torch.tensor([[7,8,9],[1,2,3],[3,2,1]])
+    print(calc_macro_f1_score(cm))
+    plt.show()
