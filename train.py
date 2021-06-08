@@ -38,6 +38,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 confusion_matrix = update_conf_matrix(confusion_matrix, labels, preds)
+            epoch_loss = running_loss / dataset_sizes[phase]            
             if phase == 'train':
                 # Update LR
                 writer.add_scalar(tag="general/lr", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
@@ -51,10 +52,8 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 elif epoch > warmup_steps:
                     num_epochs_no_improvement += 1
             # Log epoch statistics
-            epoch_loss = running_loss / dataset_sizes[phase]
             class_labels = list(range(outputs.size(1)))
             write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, confusion_matrix, class_labels)
-
         writer.add_scalar(tag="general/time", scalar_value=time.time()-epoch_start_time, global_step=epoch)
         if num_epochs_no_improvement == num_epochs_to_converge:
             break
