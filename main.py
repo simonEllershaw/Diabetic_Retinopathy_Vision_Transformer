@@ -34,10 +34,12 @@ if __name__ == "__main__":
     dataset_names = ["train", "val", "test"]
     data_directory = "diabetic-retinopathy-detection" #sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    datasets = EyePACS_Dataset.create_train_val_test_datasets(data_directory, dataset_proportions, dataset_names, max_length=1000)
+    full_dataset = EyePACS_Dataset(data_directory, max_length=5000)
+    class_names = full_dataset.class_names
+
+    datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=False
-    class_names = datasets["train"].class_names
-    dataset_indicies = {name: datasets[name].indices for name in dataset_names}
+    
     # with open(os.path.join(run_directory, "dataset_indexes.pkl"), "wb+") as index_file:
     #     pickle.dump(dataset_indicies, index_file)
 
@@ -49,20 +51,13 @@ if __name__ == "__main__":
                                             shuffle=False, num_workers=num_workers)
                         for name in dataset_names}   
     dataloaders["train"].shuffle = True
-    
+
     # Calc class inbalance and so loss function weights
     data_train_labels = datasets["train"].get_labels()
-    data_train_class_frequency = torch.tensor(data_train_labels.value_counts(sort=False))
-    # data_train_class_weights = (1 / data_train_class_frequency) * (len(datasets["train"]) / len(class_names))
-    
-    weight = 1. / data_train_class_frequency
-    # samples_weight = weight[data_train_labels.values]
-    # sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
-    
-    # dataloaders["train"] = torch.utils.data.DataLoader(
-    #     datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
-    # dataloaders["train"].shuffle = True
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    train_freq = torch.tensor(data_train_labels.value_counts(sort=False).sort_index()).float()
+    weight = 1.0/train_freq
+    weight = weight / torch.sum(weight) * len(class_names)
 
     # Set hyperparameters
     num_epochs = 100
@@ -72,7 +67,7 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=0.03, momentum=0.9)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 5
+    num_epochs_to_converge = 100
     grad_clip_norm = 1
 
     # Init tensorboard

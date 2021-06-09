@@ -19,17 +19,11 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, indices=None, max_length=None):
+    def __init__(self, data_directory, labels=None, max_length=None):
         # Load and extract config variables
-        labels_fname = os.path.join(data_directory, "trainLabels.csv", "trainLabels.csv")
-        labels_df_full = pd.read_csv(labels_fname)
-        if indices is not None:
-            self.labels_df = labels_df_full.iloc[indices].reset_index(drop=True)
-        elif max_length is not None:
-            self.labels_df = labels_df_full.iloc[:max_length]
-        else:
-            self.labels_df = labels_df_full
         self.data_directory = data_directory
+        self.labels_df = labels if labels is not None else self.load_labels()
+        self.length = max_length if max_length is not None else len(self.labels_df)
         self.img_dir = os.path.join(data_directory, "train", "train")
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
         self.class_names = ["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
@@ -38,7 +32,7 @@ class EyePACS_Dataset(Dataset):
         self.img_size = 224
 
     def __len__(self):
-        return len(self.labels_df)
+        return self.length
 
     def __getitem__(self, idx):
         # Extract sample's metadata
@@ -51,6 +45,11 @@ class EyePACS_Dataset(Dataset):
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor().__call__(img)
         return img, label, metadata.image
+
+    def load_labels(self):
+        label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
+        labels_df = pd.read_csv(label_fname).sample(frac=1).reset_index(drop=True)
+        return labels_df
 
     def get_labels(self):
         return self.labels_df.level
@@ -102,42 +101,30 @@ class EyePACS_Dataset(Dataset):
         ])
         return augment_transforms(img)
 
-    def create_train_val_test_datasets(data_directory, proportions, dataset_names, max_length=None):
-        full_dataset = EyePACS_Dataset(data_directory, max_length=max_length)
-        indicies = np.arange(len(full_dataset))
-        np.random.shuffle(indicies)
-        proportions = (proportions*len(indicies)).astype(int)
-        print(proportions)
-        test = np.cumsum(proportions[:2])
-        print(test)
-        split_indicies = np.split(indicies, test)
-        print([i.shape for i in split_indicies])
-        datasets = {dataset_names[i]: EyePACS_Dataset(data_directory, split_indicies[i]) for i in range(len(split_indicies))}
-        dataset_indicies = {dataset_names[i]: split_indicies[i] for i in range(len(split_indicies))}
-        return datasets, dataset_indicies
+    def create_train_val_test_datasets(self, proportions, dataset_names):
+        lengths = (proportions*len(self)).astype(int)
+        split_indicies = np.cumsum(lengths)
+
+        labels_subset = {}
+        labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
+        labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
+        labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
+
+        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset]) for subset in dataset_names}
+        return subsets
                 
 if __name__ == "__main__":
-    start_time = time.time()
-    data_directory = sys.argv[1]
-    data = EyePACS_Dataset(data_directory)
-    data.preprocess_all_images()
-    # print(time.time()-start_time)
+    # start_time = time.time()
+    # data_directory = sys.argv[1]
+    # data = EyePACS_Dataset(data_directory)
+    # data.preprocess_all_images()
 
-    # data.augment = True
-    # print(len(data))
-    # for i in range(10):
-    #     start_time = time.time()
-    #     x = data[i]
-    #     print(time.time()-start_time)
-    # data.is_train_set = False
-    # start_time = time.time()
-    # data = data[2]
-    # print(time.time()-start_time)
-    # fig, ax = plt.subplots()
-    # idx = 12
-    # start_time = time.time()
-    # sample = data[idx]
-    # print(time.time()-start_time)
-    # visualisation.imshow(sample[0], ax)
-    # plt.show()
+    data = EyePACS_Dataset("diabetic-retinopathy-detection")
+    idx = 12
+    start_time = time.time()
+    sample = data[idx]
+    print(time.time()-start_time)
+    fig, ax = plt.subplots()
+    visualisation.imshow(sample[0], ax)
+    plt.show()
 
