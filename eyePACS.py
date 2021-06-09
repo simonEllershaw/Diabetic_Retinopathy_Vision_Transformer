@@ -22,13 +22,13 @@ class EyePACS_Dataset(Dataset):
     def __init__(self, data_directory, indices=None, max_length=None):
         # Load and extract config variables
         labels_fname = os.path.join(data_directory, "trainLabels.csv", "trainLabels.csv")
-        self.labels_df = pd.read_csv(labels_fname)
+        labels_df_full = pd.read_csv(labels_fname)
         if indices is not None:
-            self.indices = indices
+            self.labels_df = labels_df_full.iloc[indices].reset_index(drop=True)
         elif max_length is not None:
-            self.indices = np.arange(max_length)
+            self.labels_df = labels_df_full.iloc[:max_length]
         else:
-            self.indices = np.arange(len(self.labels_df))
+            self.labels_df = labels_df_full
         self.data_directory = data_directory
         self.img_dir = os.path.join(data_directory, "train", "train")
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
@@ -38,11 +38,10 @@ class EyePACS_Dataset(Dataset):
         self.img_size = 224
 
     def __len__(self):
-        return len(self.indices)
+        return len(self.labels_df)
 
-    def __getitem__(self, index):
+    def __getitem__(self, idx):
         # Extract sample's metadata
-        idx = self.indices[index]
         metadata = self.labels_df.loc[idx]
         label = metadata.level
         # Load and transform img
@@ -54,7 +53,7 @@ class EyePACS_Dataset(Dataset):
         return img, label, metadata.image
 
     def get_labels(self):
-        return self.labels_df.level.iloc[self.indices]
+        return self.labels_df.level
 
     def preprocess_image(self, img):
         # Crop image according to bounding box then resize imge
@@ -108,8 +107,14 @@ class EyePACS_Dataset(Dataset):
         indicies = np.arange(len(full_dataset))
         np.random.shuffle(indicies)
         proportions = (proportions*len(indicies)).astype(int)
-        split_indicies = np.split(indicies, np.cumsum(proportions[:2]))
-        return {dataset_names[i]: EyePACS_Dataset(data_directory, split_indicies[i]) for i in range(len(split_indicies))}
+        print(proportions)
+        test = np.cumsum(proportions[:2])
+        print(test)
+        split_indicies = np.split(indicies, test)
+        print([i.shape for i in split_indicies])
+        datasets = {dataset_names[i]: EyePACS_Dataset(data_directory, split_indicies[i]) for i in range(len(split_indicies))}
+        dataset_indicies = {dataset_names[i]: split_indicies[i] for i in range(len(split_indicies))}
+        return datasets, dataset_indicies
                 
 if __name__ == "__main__":
     start_time = time.time()
