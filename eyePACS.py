@@ -19,10 +19,10 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, labels=None, max_length=None):
+    def __init__(self, data_directory, labels=None, max_length=None, random_state=None):
         # Load and extract config variables
         self.data_directory = data_directory
-        self.labels_df = labels if labels is not None else self.load_labels()
+        self.labels_df = labels if labels is not None else self.load_labels(random_state)
         self.length = max_length if max_length is not None else len(self.labels_df)
         self.img_dir = os.path.join(data_directory, "train", "train")
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
@@ -46,9 +46,9 @@ class EyePACS_Dataset(Dataset):
         img = torchvision.transforms.ToTensor().__call__(img)
         return img, label, metadata.image
 
-    def load_labels(self):
+    def load_labels(self, random_state=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
-        labels_df = pd.read_csv(label_fname).sample(frac=1).reset_index(drop=True)
+        labels_df = pd.read_csv(label_fname).sample(frac=1, random_state=random_state).reset_index(drop=True)
         return labels_df
 
     def get_labels(self):
@@ -97,7 +97,7 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2)),
+            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1,0.1), scale=(0.8,1.2)),
         ])
         return augment_transforms(img)
 
@@ -109,7 +109,7 @@ class EyePACS_Dataset(Dataset):
         labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
         labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
         labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-
+        print(labels_subset["val"].head())
         subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset]) for subset in dataset_names}
         return subsets
                 
