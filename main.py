@@ -32,13 +32,14 @@ if __name__ == "__main__":
 
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]
-    data_directory = "diabetic-retinopathy-detection" #sys.argv[1]
+    data_directory = "diabetic-retinopathy-detection" 
+    # data_directory = sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, max_length=5000)
+    full_dataset = EyePACS_Dataset(data_directory, max_length=1000, random_state=13)
     class_names = full_dataset.class_names
 
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
-    datasets["train"].augment=False
+    datasets["train"].augment=True
     
     # with open(os.path.join(run_directory, "dataset_indexes.pkl"), "wb+") as index_file:
     #     pickle.dump(dataset_indicies, index_file)
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
     criterion = nn.CrossEntropyLoss(weight=weight.to(device))
-    optimizer = optim.SGD(model.parameters(), lr=0.03, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0005)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
     num_epochs_to_converge = 100
