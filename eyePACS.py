@@ -43,12 +43,21 @@ class EyePACS_Dataset(Dataset):
         img = Image.open(img_path)
         if self.augment:
             img = self.augmentation(img)
-        img = torchvision.transforms.ToTensor().__call__(img)
+        img = torchvision.transforms.ToTensor()(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
         labels_df = pd.read_csv(label_fname).sample(frac=1, random_state=random_state).reset_index(drop=True)
+        
+        # freq = np.array(labels_df.level.value_counts(sort=False).sort_index())
+        # min_freq = min(freq)
+        # downsample_df = pd.DataFrame()
+        # for label in range(len(freq)):
+        #     level_df = labels_df[labels_df.level == label]
+        #     downsample_level = level_df[:min_freq]
+        #     downsample_df = pd.concat([downsample_df,downsample_level])
+        # labels_df = downsample_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         return labels_df
 
     def get_labels(self):
@@ -56,48 +65,27 @@ class EyePACS_Dataset(Dataset):
 
     def preprocess_image(self, img):
         # Crop image according to bounding box then resize imge
-        left, top, box_size = self.calc_cropbox_dim(img)
-        img = torchvision.transforms.functional.crop(img, top, left, box_size, box_size)
-        img = torchvision.transforms.Resize((self.img_size, self.img_size)).forward(img)
-        return img
+        return transforms.GrahamPreprocessing(img)
 
     def preprocess_all_images(self):
         if not os.path.exists(self.img_dir_preprocessed):
             os.makedirs(self.img_dir_preprocessed)
-        for idx in self.indices:
+        for idx in range(len(self)):
             fname = self.labels_df.loc[idx].image + ".jpeg"
-            img = Image.open(os.path.join(self.img_dir, fname))
-            img = self.preprocess_image(img)
-            img.save(os.path.join(self.img_dir_preprocessed, fname))
+            img = cv2.imread(os.path.join(self.img_dir, fname))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            try:
+                img = self.preprocess_image(img)
+                cv2.imwrite(os.path.join(self.img_dir_preprocessed, fname), img)
+            except:
+                print(fname)
 
-    def calc_cropbox_dim(self, img):
-        # Sum over colour channels and threshold to give
-        # segmentation map. Only look at every 100th row/col
-        # to reduce compute at cost of accuracy
-        stride = 100
-        img_np = np.asarray(img)[::stride,::stride].sum(2) # converting to np array slow but necessary
-        img_np = np.where(img_np>img_np.mean()/5, 1, 0)
-        # Find nonzero rows and columns (convert back to org indexing)
-        non_zero_rows = np.nonzero(img_np.sum(1))[0]*stride
-        non_zero_columns = np.nonzero(img_np.sum(0))[0]*stride
-        # Boundaries given first and last non zero rows/columns 
-        boundary_coords = np.zeros((2,2))
-        boundary_coords[:, 0] = non_zero_columns[[0, -1]] # x coords
-        boundary_coords[:, 1] = non_zero_rows[[0, -1]] # y coords
-        # Center is middle of the non zero values
-        center = np.zeros(2)
-        center[0], center[1] = np.median(non_zero_columns), np.median(non_zero_rows)
-        # Radius is max boundary difference, add stride to conservatively account
-        # for uncertainity due to it's use and pad by 5%
-        radius = ((max(boundary_coords[1] - boundary_coords[0])/2)+stride)*1.05
-        top_left_coord = np.round((center - radius))
-        return top_left_coord[0], top_left_coord[1], round(radius*2)
     
     def augmentation(self, img):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1,0.1), scale=(0.8,1.2)),
+            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1,0.1), scale=(0.8,1.2), fill=128),
         ])
         return augment_transforms(img)
 
@@ -109,22 +97,23 @@ class EyePACS_Dataset(Dataset):
         labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
         labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
         labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-        print(labels_subset["val"].head())
         subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset]) for subset in dataset_names}
         return subsets
                 
 if __name__ == "__main__":
     # start_time = time.time()
-    # data_directory = sys.argv[1]
+    # data_directory = "diabetic-retinopathy-detection"#sys.argv[1]
     # data = EyePACS_Dataset(data_directory)
     # data.preprocess_all_images()
 
     data = EyePACS_Dataset("diabetic-retinopathy-detection")
+    data.augment = True
     idx = 12
     start_time = time.time()
     sample = data[idx]
     print(time.time()-start_time)
+    print(sample[2])
     fig, ax = plt.subplots()
     visualisation.imshow(sample[0], ax)
     plt.show()
-
+    
