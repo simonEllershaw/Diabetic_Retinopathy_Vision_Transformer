@@ -42,7 +42,7 @@ def plot_confusion_matrix(cm, class_names):
     cm_fract = cm/(cm.sum(1, keepdim=True))
     
     figure = plt.figure(figsize=(8, 8))
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.imshow(cm_fract, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title("Confusion matrix")
     plt.colorbar()
     tick_marks = np.arange(len(class_names))
