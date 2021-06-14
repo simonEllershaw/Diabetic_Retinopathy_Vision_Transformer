@@ -25,7 +25,7 @@ class EyePACS_Dataset(Dataset):
         self.labels_df = labels if labels is not None else self.load_labels(random_state)
         self.length = max_length if max_length is not None else len(self.labels_df)
         self.img_dir = os.path.join(data_directory, "train", "train")
-        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_GP")
         self.class_names = ["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
