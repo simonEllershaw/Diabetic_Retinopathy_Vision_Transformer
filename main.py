@@ -35,7 +35,7 @@ if __name__ == "__main__":
     data_directory = "diabetic-retinopathy-detection" 
     # data_directory = sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, max_length=1000, random_state=13)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13)
     class_names = full_dataset.class_names
 
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
@@ -57,15 +57,24 @@ if __name__ == "__main__":
     data_train_labels = datasets["train"].get_labels()
 
     train_freq = torch.tensor(data_train_labels.value_counts(sort=False).sort_index()).float()
-    weight = 1.0/train_freq
-    weight = weight / torch.sum(weight) * len(class_names)
+    print(train_freq)
+    # weight = 1.0/train_freq
+    # weight = weight / torch.sum(weight) * len(class_names)
+
+    weight = 1. / train_freq
+    samples_weight = weight[data_train_labels.values]
+    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+
+    dataloaders["train"] = torch.utils.data.DataLoader(
+        datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
+    dataloaders["train"].shuffle = True
 
     # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
-    criterion = nn.CrossEntropyLoss(weight=weight.to(device))
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0005)
+    criterion = nn.CrossEntropyLoss()#weight=weight.to(device))
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
     num_epochs_to_converge = 100
