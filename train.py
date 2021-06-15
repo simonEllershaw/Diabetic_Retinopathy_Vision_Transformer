@@ -50,6 +50,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                     best_loss = epoch_loss
                     torch.save(model.state_dict(), model_param_fname)
                     num_epochs_no_improvement = 0
+                    best_conf_matrix = confusion_matrix
                 elif epoch > warmup_steps:
                     num_epochs_no_improvement += 1
             # Log epoch statistics
@@ -58,7 +59,9 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
         writer.add_scalar(tag="general/time", scalar_value=time.time()-epoch_start_time, global_step=epoch)
         if num_epochs_no_improvement == num_epochs_to_converge:
             break
-    # Return best model and perf metric at end of training        
+    # Return best model and perf metric at end of training
+    confusion_matrix_vis = visualisation.plot_confusion_matrix(best_conf_matrix, class_labels)
+    writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=epoch+1)
     model.load_state_dict(torch.load(model_param_fname))
     model.eval()
     return model, best_loss
