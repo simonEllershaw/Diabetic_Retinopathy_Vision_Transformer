@@ -68,8 +68,8 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
     criterion = nn.CrossEntropyLoss()#weight=weight.to(device))
-    lr = sys.argv[2] #0.001
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    lr = float(sys.argv[2]) #0.001
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=0.01)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
     num_epochs_to_converge = 100
