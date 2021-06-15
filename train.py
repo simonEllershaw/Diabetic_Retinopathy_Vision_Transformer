@@ -47,7 +47,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
             elif phase == 'val':
                 # Check if model performance has improved if so save model
                 if epoch_loss < best_loss:
-                    best_loss = epoch_kappa
+                    best_loss = epoch_loss
                     torch.save(model.state_dict(), model_param_fname)
                     num_epochs_no_improvement = 0
                 elif epoch > warmup_steps:
