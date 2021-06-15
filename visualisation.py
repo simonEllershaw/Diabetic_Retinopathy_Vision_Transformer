@@ -43,17 +43,18 @@ def plot_confusion_matrix(cm, class_names):
     
     figure = plt.figure(figsize=(8, 8))
     plt.imshow(cm_fract, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title("Confusion matrix")
     plt.colorbar()
+    plt.clim(0, 1)
+    plt.title("Confusion matrix")
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names)
     plt.yticks(tick_marks, class_names)
        
     # Use white text if squares are dark; otherwise black.
-    threshold = cm.max() / 2.
+    threshold = 0.5
     
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        color = "white" if cm[i, j] > threshold else "black"
+        color = "white" if cm_fract[i, j] > threshold else "black"
         plt.text(j, i, f"{cm[i, j].item()}({cm_fract[i, j].item():.2f})", horizontalalignment="center", color=color)
         
     plt.tight_layout()
