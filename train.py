@@ -38,7 +38,8 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
-            epoch_loss = running_loss / dataset_sizes[phase]            
+            epoch_loss = running_loss / dataset_sizes[phase]  
+            epoch_kappa = metrics.calc_weighted_quadratic_kappa(confusion_matrix)           
             if phase == 'train':
                 # Update LR
                 writer.add_scalar(tag="general/lr", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
@@ -46,7 +47,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
             elif phase == 'val':
                 # Check if model performance has improved if so save model
                 if epoch_loss < best_loss:
-                    best_loss = epoch_loss
+                    best_loss = epoch_kappa
                     torch.save(model.state_dict(), model_param_fname)
                     num_epochs_no_improvement = 0
                     best_conf_matrix = confusion_matrix
