@@ -7,7 +7,7 @@ import visualisation
 #https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 
 def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, grad_clip_norm=0):
-    best_kappa = float('-inf')
+    best_loss = float('inf')
     model_param_fname = os.path.join(run_directory, "model_params.pt")
     num_epochs_no_improvement = 0
 
@@ -46,8 +46,8 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 scheduler.step()
             elif phase == 'val':
                 # Check if model performance has improved if so save model
-                if epoch_kappa > best_kappa:
-                    best_kappa = epoch_kappa
+                if epoch_loss < best_loss:
+                    best_loss = epoch_kappa
                     torch.save(model.state_dict(), model_param_fname)
                     num_epochs_no_improvement = 0
                 elif epoch > warmup_steps:
@@ -61,7 +61,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
     # Return best model and perf metric at end of training        
     model.load_state_dict(torch.load(model_param_fname))
     model.eval()
-    return model, best_kappa
+    return model, best_loss
 
 def write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, confusion_matrix, class_labels):
     # Calc statistics
