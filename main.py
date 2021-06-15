@@ -72,7 +72,7 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=0.01)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 100
+    num_epochs_to_converge = 15
     grad_clip_norm = 1
 
     # Init tensorboard
