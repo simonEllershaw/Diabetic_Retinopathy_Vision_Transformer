@@ -37,7 +37,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                         optimizer.step()
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
-                confusion_matrix = update_conf_matrix(confusion_matrix, labels, preds)
+                confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
             epoch_loss = running_loss / dataset_sizes[phase]            
             if phase == 'train':
                 # Update LR
@@ -74,11 +74,6 @@ def write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, conf
     writer.add_scalar(tag=phase + "/acc", scalar_value=epoch_acc, global_step=epoch)
     writer.add_scalar(tag=phase + "/f1_macro", scalar_value=epoch_f1_macro, global_step=epoch)
     writer.add_scalar(tag=phase + "/kappa", scalar_value=epoch_kappa, global_step=epoch)
-
-def update_conf_matrix(confusion_matrix, labels, preds):
-    for l, p in zip(labels.view(-1), preds.view(-1)):
-        confusion_matrix[l, p] += 1
-    return confusion_matrix
 
 
 

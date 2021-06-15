@@ -1,6 +1,11 @@
 import torch
 import numpy as np
 
+def update_conf_matrix(confusion_matrix, labels, preds):
+    for l, p in zip(labels.view(-1), preds.view(-1)):
+        confusion_matrix[l, p] += 1
+    return confusion_matrix
+
 def calc_macro_f1_score(confusion_matrix):
     precision = confusion_matrix.diagonal()/confusion_matrix.sum(dim=0)
     recall = confusion_matrix.diagonal()/confusion_matrix.sum(dim=1)
