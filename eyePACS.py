@@ -25,8 +25,8 @@ class EyePACS_Dataset(Dataset):
         self.labels_df = labels if labels is not None else self.load_labels(random_state)
         self.length = max_length if max_length is not None else len(self.labels_df)
         self.img_dir = os.path.join(data_directory, "train", "train")
-        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_GP")
-        self.class_names = ["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
+        self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
@@ -49,15 +49,16 @@ class EyePACS_Dataset(Dataset):
     def load_labels(self, random_state=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
         labels_df = pd.read_csv(label_fname).sample(frac=1, random_state=random_state).reset_index(drop=True)
-        
-        freq = np.array(labels_df.level.value_counts(sort=False).sort_index())
-        min_freq = min(freq)
-        downsample_df = pd.DataFrame()
-        for label in range(len(freq)):
-            level_df = labels_df[labels_df.level == label]
-            downsample_level = level_df[:min_freq]
-            downsample_df = pd.concat([downsample_df,downsample_level])
-        labels_df = downsample_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
+        labels_df.level = np.where(labels_df.level>1, 1, 0)
+        # freq = np.array(labels_df.level.value_counts(sort=False).sort_index())
+        # freq
+        # min_freq = min(freq)
+        # downsample_df = pd.DataFrame()
+        # for label in range(len(freq)):
+        #     level_df = labels_df[labels_df.level == label]
+        #     downsample_level = level_df[:min_freq]
+        #     downsample_df = pd.concat([downsample_df,downsample_level])
+        # labels_df = downsample_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         return labels_df
 
     def get_labels(self):
@@ -85,7 +86,7 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2), fill=128),
+            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2))#, fill=128),
         ])
         return augment_transforms(img)
 

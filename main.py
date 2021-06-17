@@ -32,17 +32,17 @@ if __name__ == "__main__":
 
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]
-    # data_directory = "diabetic-retinopathy-detection" 
-    data_directory = sys.argv[1]
+    data_directory = "diabetic-retinopathy-detection" 
+    # data_directory = sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13)
+    full_dataset = EyePACS_Dataset(data_directory, max_length=1000,random_state=13)
     class_names = full_dataset.class_names
 
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
 
     # Setup dataloaders
-    batch_size= 100#64
+    batch_size= 64 #100
     num_workers = 4
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
     dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=batch_size,
@@ -66,9 +66,10 @@ if __name__ == "__main__":
     # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
+    model = timm.create_model("resnet50", pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
+
     criterion = nn.CrossEntropyLoss()#weight=weight.to(device))
-    lr = float(sys.argv[2]) #0.001
+    lr = 0.003 #float(sys.argv[2]) #0.001
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=0.01)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)

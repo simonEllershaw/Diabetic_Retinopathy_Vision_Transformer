@@ -22,7 +22,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
             confusion_matrix = torch.zeros(nb_classes, nb_classes)
             for inputs, labels, _ in dataloaders[phase]:
                 inputs = inputs.to(device)
-                labels = labels.to(device)
+                labels = labels.long().to(device)
                 optimizer.zero_grad()
                 # forward
                 with torch.set_grad_enabled(phase == 'train'):
