@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, labels=None, max_length=None, random_state=None):
+    def __init__(self, data_directory, labels=None, max_length=None, random_state=None, fill=0):
         # Load and extract config variables
         self.data_directory = data_directory
         self.labels_df = labels if labels is not None else self.load_labels(random_state)
@@ -30,6 +30,7 @@ class EyePACS_Dataset(Dataset):
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
+        self.fill = fill
 
     def __len__(self):
         return self.length
@@ -86,7 +87,7 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2))#, fill=128),
+            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2), fill=self.fill),
         ])
         return augment_transforms(img)
 
