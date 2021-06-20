@@ -13,6 +13,16 @@ def calc_macro_f1_score(confusion_matrix):
     f1[f1 != f1] = 0
     return f1.mean()
 
+def calc_binary_f1_score(confusion_matrix):
+    true_positive = confusion_matrix[1,1]
+    try:
+        precision = true_positive/torch.sum(confusion_matrix[1,:])
+        recall = true_positive/torch.sum(confusion_matrix[:,1])
+    except:
+        return 0
+    f1 = (2*(precision*recall)/(precision+recall))
+    return f1
+
 def calc_accuracy(confusion_matrix):
     return confusion_matrix.diagonal().sum()/confusion_matrix.sum()
 

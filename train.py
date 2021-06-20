@@ -45,12 +45,13 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 scheduler.step()
             elif phase == 'val':
                 # Check if model performance has improved if so save model
-                epoch_f1_macro = metrics.calc_macro_f1_score(confusion_matrix)           
+                epoch_f1_macro = metrics.calc_binary_f1_score(confusion_matrix)           
                 if epoch_f1_macro > best_f1:
                     best_f1 = epoch_f1_macro
                     torch.save(model.state_dict(), model_param_fname)
                     num_epochs_no_improvement = 0
                     best_conf_matrix = confusion_matrix
+                    best_epoch = epoch
                 elif epoch > warmup_steps:
                     num_epochs_no_improvement += 1
             # Log epoch statistics
@@ -61,23 +62,19 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
             break
     # Return best model and perf metric at end of training
     confusion_matrix_vis = visualisation.plot_confusion_matrix(best_conf_matrix, class_labels)
-    writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=epoch+1)
+    writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=100+best_epoch)
     model.load_state_dict(torch.load(model_param_fname))
     model.eval()
     return model, best_f1  
 
 def write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, confusion_matrix, class_labels):
     # Calc statistics
-    epoch_acc = metrics.calc_accuracy(confusion_matrix)
-    epoch_f1_macro = metrics.calc_macro_f1_score(confusion_matrix)
-    epoch_kappa = metrics.calc_weighted_quadratic_kappa(confusion_matrix)
+    epoch_f1_macro = metrics.calc_binary_f1_score(confusion_matrix)
     confusion_matrix_vis = visualisation.plot_confusion_matrix(confusion_matrix, class_labels)
     #Write to tensorboard
     writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=epoch)
     writer.add_scalar(tag=phase + "/loss", scalar_value=epoch_loss, global_step=epoch)
-    writer.add_scalar(tag=phase + "/acc", scalar_value=epoch_acc, global_step=epoch)
     writer.add_scalar(tag=phase + "/f1_macro", scalar_value=epoch_f1_macro, global_step=epoch)
-    writer.add_scalar(tag=phase + "/kappa", scalar_value=epoch_kappa, global_step=epoch)
 
 
 
