@@ -17,6 +17,7 @@ def GrahamPreprocessing(img):
     radius_scaled = 500       
     img = rescale_image(img, radius_inital, radius_scaled)
     img = subtract_average_local_colour(img)
+    # img = threshold_boundary(img, round(radius_scaled*0.9))
     img = cv2.resize(img, [224,224])
     return img
 
@@ -38,10 +39,11 @@ def subtract_average_local_colour(image):
     image = cv2.addWeighted(image, 4, average_local_colour, -4, 128)
     return image
 
-def threshold_boundary(image, radius_boundary):
-    boundary = np.zeros(image.shape)
-    cv2.circle(boundary, (image.shape[1]//2, image.shape[0]//2), radius_boundary, (1,1,1), -1)
-    img = cv2.multiply(image, boundary.astype("uint8"))
+def threshold_boundary(img, radius_boundary):
+    boundary = np.zeros(img.shape)
+    cv2.circle(boundary, (img.shape[1]//2, img.shape[0]//2), radius_boundary, (1,1,1), -1)
+    boundary = boundary.astype("uint8")
+    img = cv2.multiply(img, boundary) + 128*(1-boundary)
     return img
 
 def crop_image(image, radius_boundary):
