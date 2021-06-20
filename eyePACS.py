@@ -99,7 +99,7 @@ class EyePACS_Dataset(Dataset):
         labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
         labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
         labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset]) for subset in dataset_names}
+        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset], fill=self.fill) for subset in dataset_names}
         return subsets
                 
 if __name__ == "__main__":
