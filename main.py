@@ -22,27 +22,33 @@ from eyePACS import EyePACS_Dataset
 #testing
 import numpy as np
 from torchvision import transforms, datasets
+import metrics
+import sklearn.metrics
 
 if __name__ == "__main__":
     # Set up directory for experiment
-    model_name = "resnet50"
+    print(sys.argv)
+    data_directory = sys.argv[1]
+    model_name = sys.argv[2]
+    lr = float(sys.argv[3])
+    
     dataset_name = "_eyePACS_"
     run_directory = os.path.join("runs", model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
     os.mkdir(run_directory)
 
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]
-    data_directory = "diabetic-retinopathy-detection" 
-    # data_directory = sys.argv[1]
+    # data_directory = "diabetic-retinopathy-detection" 
+    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, max_length=1000,random_state=13)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13)
     class_names = full_dataset.class_names
 
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
 
     # Setup dataloaders
-    batch_size= 64 #100
+    batch_size= 100
     num_workers = 4
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
     dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=batch_size,
@@ -63,17 +69,15 @@ if __name__ == "__main__":
         datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
     dataloaders["train"].shuffle = True
 
-    # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = timm.create_model("resnet50", pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
+    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
 
-    criterion = nn.CrossEntropyLoss()#weight=weight.to(device))
-    lr = 0.003 #float(sys.argv[2]) #0.001
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=0.01)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 15
+    num_epochs_to_converge = 25
     grad_clip_norm = 1
 
     # Init tensorboard
