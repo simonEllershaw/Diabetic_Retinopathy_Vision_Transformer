@@ -79,13 +79,12 @@ if __name__ == "__main__":
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
-    model.load_state_dict(torch.load("runs\\vit_deit_small_patch16_224_eyePACS_06_20_14_21_42\\model_params.pt"))
 
     criterion = nn.CrossEntropyLoss(weight=weights.to(device))
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 25
+    num_epochs_to_converge = 10
     grad_clip_norm = 1
 
     # Init tensorboard
