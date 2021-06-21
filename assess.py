@@ -54,6 +54,15 @@ def plot_precision_recall_curve(labels, prob_log, ax):
     ax.set_ylim(0,1.1)
     return auc
 
+def plot_ROC_curve(labels, prob_log, ax):
+    fpr, tpr, _ = sklearn.metrics.roc_curve(labels, prob_log)
+    auc = sklearn.metrics.auc(fpr, tpr)
+    pr_display = sklearn.metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot(ax)
+    ax.plot([0, 1], [0, 1], linestyle='--', label='No Skill')
+    ax.set_xlim(0,1)
+    ax.set_ylim(0,1)
+    return auc
+
 if __name__ == "__main__":
     torch.cuda.empty_cache()
     # Load datasets split into train, val and test
@@ -63,7 +72,7 @@ if __name__ == "__main__":
     
     # data_directory = sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, max_length=1000)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     batch_size = 100
@@ -75,10 +84,15 @@ if __name__ == "__main__":
     labels = datasets["val"].get_labels()
     prob_log, pred_log = get_predictions(model, dataloader, len(datasets["val"]), batch_size)
     metrics = calc_metrics(labels, pred_log)
-    fig, ax = plt.subplots()
-    metrics["auc"] = plot_precision_recall_curve(labels, prob_log, ax)
     
+
+    fig, ax = plt.subplots()
+    metrics["Pre/Rec AUC"] = plot_precision_recall_curve(labels, prob_log, ax)
     plt.savefig(os.path.join(model_directory, "precision_recall_curve.png"))
+    
+    fig, ax = plt.subplots()
+    metrics["ROC AUC"] =plot_ROC_curve(labels, prob_log, ax)
+    plt.savefig(os.path.join(model_directory, "ROC_curve.png"))
+    
     with open(os.path.join(model_directory, "metrics.txt"), "w+") as f:
         f.write(pprint.pformat(metrics))
-    
