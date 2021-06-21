@@ -18,6 +18,7 @@ import LRSchedules
 from train import train_model
 import visualisation
 from eyePACS import EyePACS_Dataset
+import sklearn.utils
 
 #testing
 import numpy as np
@@ -25,7 +26,7 @@ from torchvision import transforms, datasets
 
 if __name__ == "__main__":
     # Set up directory for experiment
-    model_name = "resnet50"
+    model_name = "vit_deit_small_patch16_224"
     dataset_name = "_eyePACS_"
     run_directory = os.path.join("runs", model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
     os.mkdir(run_directory)
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     data_directory = "diabetic-retinopathy-detection" 
     # data_directory = sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, max_length=1000,random_state=13)
+    full_dataset = EyePACS_Dataset(data_directory, max_length=1000, random_state=13)
     class_names = full_dataset.class_names
 
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
@@ -51,29 +52,36 @@ if __name__ == "__main__":
     dataloaders["train"].shuffle = True
 
     # Calc class inbalance and so loss function weights
-    data_train_labels = datasets["train"].get_labels()
+    data_train_labels = np.array(datasets["train"].get_labels())
 
-    train_freq = torch.tensor(data_train_labels.value_counts(sort=False).sort_index()).float()
-    print(train_freq)
-    weight = 1. / train_freq
-    samples_weight = weight[data_train_labels.values]
-    sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+    # train_freq = torch.tensor(data_train_labels.value_counts(sort=False).sort_index()).float()
+    weights = sklearn.utils.class_weight.compute_class_weight("balanced", classes=np.unique(data_train_labels), y=data_train_labels)
+    weights = torch.tensor(weights).float()
+    # # Calc class inbalance and so loss function weights
+    # data_train_labels = datasets["train"].get_labels()
 
-    dataloaders["train"] = torch.utils.data.DataLoader(
-        datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
-    dataloaders["train"].shuffle = True
+    # train_freq = torch.tensor(data_train_labels.value_counts(sort=False).sort_index()).float()
+    # print(train_freq)
+    # weight = 1. / train_freq
+    # samples_weight = weight[data_train_labels.values]
+    # sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
+
+    # dataloaders["train"] = torch.utils.data.DataLoader(
+    #     datasets["train"], batch_size=batch_size, num_workers=num_workers, sampler=sampler)
+    # dataloaders["train"].shuffle = True
 
     # Set hyperparameters
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = timm.create_model("resnet50", pretrained=True, num_classes=len(class_names), drop_rate=0.5).to(device)
+    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
+    model.load_state_dict(torch.load("runs\\vit_deit_small_patch16_224_eyePACS_06_20_14_21_42\\model_params.pt"))
 
-    criterion = nn.CrossEntropyLoss()#weight=weight.to(device))
+    criterion = nn.CrossEntropyLoss(weight=weights.to(device))
     lr = 0.003 #float(sys.argv[2]) #0.001
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=0.01)
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     warmup_steps = 10
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
-    num_epochs_to_converge = 15
+    num_epochs_to_converge = 25
     grad_clip_norm = 1
 
     # Init tensorboard
