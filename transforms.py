@@ -17,7 +17,7 @@ def GrahamPreprocessing(img):
     radius_scaled = 500       
     img = rescale_image(img, radius_inital, radius_scaled)
     img = subtract_average_local_colour(img)
-    # img = threshold_boundary(img, round(radius_scaled*0.9))
+    img = threshold_boundary(img, round(radius_scaled*0.9))
     img = cv2.resize(img, [224,224])
     return img
 
@@ -95,7 +95,7 @@ def calc_cropbox_dim(img):
 if __name__ == "__main__":
     fig, axes = plt.subplots(1,2)
     start_time = time.time()
-    image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\1350_left.jpeg")
+    image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\10_left.jpeg")
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     axes[0].imshow(image)
     image = GrahamPreprocessing(image)
