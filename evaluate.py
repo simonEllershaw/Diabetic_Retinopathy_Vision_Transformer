@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import sklearn.metrics
 import os
 import pprint
+import sys
 
 def load_model(model_directory, model_name, device):
     model_fname = os.path.join(model_directory, "model_params.pt")
@@ -16,7 +17,7 @@ def load_model(model_directory, model_name, device):
     model = model.eval().to(device)
     return model
 
-def get_predictions(model, dataloader, num_samples, batch_size):
+def get_predictions(model, dataloader, num_samples, batch_size, device):
     torch.set_grad_enabled(False)
     prob_log = torch.zeros(num_samples) 
     pred_log = torch.zeros(num_samples) 
@@ -62,14 +63,29 @@ def plot_ROC_curve(labels, prob_log, ax):
     ax.set_ylim(0,1)
     return auc
 
+def evaluate_model(model, device, dataloader, labels, batch_size, model_directory):
+    prob_log, pred_log = get_predictions(model, dataloader, len(labels), batch_size, device)
+    metrics = calc_metrics(labels, pred_log)
+    
+    fig, ax = plt.subplots()
+    metrics["Pre/Rec AUC"] = plot_precision_recall_curve(labels, prob_log, ax)
+    plt.savefig(os.path.join(model_directory, "precision_recall_curve.png"))
+    
+    fig, ax = plt.subplots()
+    metrics["ROC AUC"] = plot_ROC_curve(labels, prob_log, ax)
+    plt.savefig(os.path.join(model_directory, "ROC_curve.png"))
+    
+    with open(os.path.join(model_directory, "metrics.txt"), "w+") as f:
+        f.write(pprint.pformat(metrics))
+
 if __name__ == "__main__":
     torch.cuda.empty_cache()
     # Load datasets split into train, val and test
-    data_directory = "diabetic-retinopathy-detection" 
-    model_directory = "runs\\resnet50_eyePACS_06_22_11_32_15"
-    model_name = "resnet50"
-    
-    # data_directory = sys.argv[1]
+    print(sys.argv)
+    data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
+    model_directory = sys.argv[2] if len(sys.argv) > 2 else "runs\\22_6_21Exp\\resnet50_eyePACS_ColourJitter"
+    model_name = float(sys.argv[3]) if len(sys.argv) > 3 else "resnet50"
+
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
     class_names = full_dataset.class_names
@@ -81,17 +97,4 @@ if __name__ == "__main__":
     model = load_model(model_directory, model_name, device)
 
     labels = datasets["val"].get_labels()
-    prob_log, pred_log = get_predictions(model, dataloader, len(datasets["val"]), batch_size)
-    metrics = calc_metrics(labels, pred_log)
-    
-
-    fig, ax = plt.subplots()
-    metrics["Pre/Rec AUC"] = plot_precision_recall_curve(labels, prob_log, ax)
-    plt.savefig(os.path.join(model_directory, "precision_recall_curve.png"))
-    
-    fig, ax = plt.subplots()
-    metrics["ROC AUC"] = plot_ROC_curve(labels, prob_log, ax)
-    plt.savefig(os.path.join(model_directory, "ROC_curve.png"))
-    
-    with open(os.path.join(model_directory, "metrics.txt"), "w+") as f:
-        f.write(pprint.pformat(metrics))
+    evaluate_model(model, device, dataloader, labels, batch_size, model_directory)
