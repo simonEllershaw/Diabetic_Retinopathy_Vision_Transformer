@@ -80,7 +80,7 @@ class EyePACS_Dataset(Dataset):
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
             torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2), fill=self.fill),
-            torchvision.transforms.ColorJitter(brightness=0.5, hue=0.1, contrast=0.5)
+            torchvision.transforms.ColorJitter(brightness=(0.5, 1.5), hue=0.5, contrast=(0.5,2), saturation=3)
         ])
         return augment_transforms(img)
 
