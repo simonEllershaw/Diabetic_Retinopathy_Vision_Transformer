@@ -42,14 +42,14 @@ if __name__ == "__main__":
     # data_directory = "diabetic-retinopathy-detection" 
     
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, max_length=1000)
     class_names = full_dataset.class_names
 
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
 
     # Setup dataloaders
-    batch_size= 100
+    batch_size= 64#100
     num_workers = 4
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
     dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=batch_size,
@@ -79,7 +79,6 @@ if __name__ == "__main__":
     num_epochs = 100
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
-    model.load_state_dict(torch.load("runs\\vit_deit_small_patch16_224_eyePACS_06_20_14_21_42\\model_params.pt"))
 
     criterion = nn.CrossEntropyLoss(weight=weights.to(device))
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
