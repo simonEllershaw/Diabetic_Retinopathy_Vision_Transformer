@@ -10,10 +10,9 @@ import os
 import pprint
 
 def load_model(model_directory, model_name, device):
-    model_fname = os.path.join(model_directory, "model.pt")
-    model_name = "vit_deit_small_patch16_224"
+    model_fname = os.path.join(model_directory, "model_params.pt")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names))
-    model.load_state_dict(torch.load("runs\\vit_deit_small_patch16_224_eyePACS_GrahamPreLRSearch\\0.1\model_params.pt"))
+    model.load_state_dict(torch.load(model_fname))
     model = model.eval().to(device)
     return model
 
@@ -67,8 +66,8 @@ if __name__ == "__main__":
     torch.cuda.empty_cache()
     # Load datasets split into train, val and test
     data_directory = "diabetic-retinopathy-detection" 
-    model_directory = "runs\\vit_deit_small_patch16_224_eyePACS_GrahamPreLRSearch\\0.01"
-    model_name = "vit_deit_small_patch16_224"
+    model_directory = "runs\\resnet50_eyePACS_06_22_11_32_15"
+    model_name = "resnet50"
     
     # data_directory = sys.argv[1]
     dataset_proportions = np.array([0.6, 0.2, 0.2])
@@ -91,7 +90,7 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(model_directory, "precision_recall_curve.png"))
     
     fig, ax = plt.subplots()
-    metrics["ROC AUC"] =plot_ROC_curve(labels, prob_log, ax)
+    metrics["ROC AUC"] = plot_ROC_curve(labels, prob_log, ax)
     plt.savefig(os.path.join(model_directory, "ROC_curve.png"))
     
     with open(os.path.join(model_directory, "metrics.txt"), "w+") as f:

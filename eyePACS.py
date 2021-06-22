@@ -30,7 +30,7 @@ class EyePACS_Dataset(Dataset):
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
-        self.fill = fill
+        self.fill = 128
 
     def __len__(self):
         return self.length
@@ -45,21 +45,13 @@ class EyePACS_Dataset(Dataset):
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
+        img = torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
         labels_df = pd.read_csv(label_fname).sample(frac=1, random_state=random_state).reset_index(drop=True)
         labels_df.level = np.where(labels_df.level>1, 1, 0)
-        # freq = np.array(labels_df.level.value_counts(sort=False).sort_index())
-        # freq
-        # min_freq = min(freq)
-        # downsample_df = pd.DataFrame()
-        # for label in range(len(freq)):
-        #     level_df = labels_df[labels_df.level == label]
-        #     downsample_level = level_df[:min_freq]
-        #     downsample_df = pd.concat([downsample_df,downsample_level])
-        # labels_df = downsample_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         return labels_df
 
     def get_labels(self):
@@ -88,6 +80,7 @@ class EyePACS_Dataset(Dataset):
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
             torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2), fill=self.fill),
+            torchvision.transforms.ColorJitter(brightness=0.5, hue=0.1, contrast=0.5)
         ])
         return augment_transforms(img)
 
@@ -108,7 +101,7 @@ if __name__ == "__main__":
     # data = EyePACS_Dataset(data_directory)
     # data.preprocess_all_images()
 
-    data = EyePACS_Dataset("diabetic-retinopathy-detection")
+    data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
     data.augment = True
     idx = 12
     start_time = time.time()
