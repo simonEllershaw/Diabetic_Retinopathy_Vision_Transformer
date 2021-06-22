@@ -69,12 +69,10 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
 
 def write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, confusion_matrix, class_labels):
     # Calc statistics
-    epoch_f1_macro = metrics.calc_binary_f1_score(confusion_matrix)
     confusion_matrix_vis = visualisation.plot_confusion_matrix(confusion_matrix, class_labels)
     #Write to tensorboard
     writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=epoch)
     writer.add_scalar(tag=phase + "/loss", scalar_value=epoch_loss, global_step=epoch)
-    writer.add_scalar(tag=phase + "/f1_macro", scalar_value=epoch_f1_macro, global_step=epoch)
 
 
 
