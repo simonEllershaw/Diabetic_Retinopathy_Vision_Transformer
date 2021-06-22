@@ -45,22 +45,13 @@ class EyePACS_Dataset(Dataset):
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
-        # img = torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(img)
+        img = torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
         labels_df = pd.read_csv(label_fname).sample(frac=1, random_state=random_state).reset_index(drop=True)
         labels_df.level = np.where(labels_df.level>1, 1, 0)
-        # freq = np.array(labels_df.level.value_counts(sort=False).sort_index())
-        # freq
-        # min_freq = min(freq)
-        # downsample_df = pd.DataFrame()
-        # for label in range(len(freq)):
-        #     level_df = labels_df[labels_df.level == label]
-        #     downsample_level = level_df[:min_freq]
-        #     downsample_df = pd.concat([downsample_df,downsample_level])
-        # labels_df = downsample_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         return labels_df
 
     def get_labels(self):
