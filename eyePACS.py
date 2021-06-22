@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, labels=None, max_length=None, random_state=None, fill=0):
+    def __init__(self, data_directory, labels=None, max_length=None, random_state=None):
         # Load and extract config variables
         self.data_directory = data_directory
         self.labels_df = labels if labels is not None else self.load_labels(random_state)
@@ -92,7 +92,7 @@ class EyePACS_Dataset(Dataset):
         labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
         labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
         labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset], fill=self.fill) for subset in dataset_names}
+        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset]) for subset in dataset_names}
         return subsets
                 
 if __name__ == "__main__":
