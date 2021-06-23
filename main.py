@@ -53,8 +53,7 @@ if __name__ == "__main__":
     # Setup dataloaders
     batch_size = 512
     mini_batch_size= 64#100
-    accumulation_steps = batch_size//mini_batch_size
-    print(accumulation_steps)
+    accumulation_steps = int(batch_size/mini_batch_size)
     num_workers = 4
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
     dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=mini_batch_size,
@@ -71,8 +70,8 @@ if __name__ == "__main__":
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
 
     num_batches_per_train_epoch = len(datasets["train"]) / batch_size
-    num_epochs = num_steps//num_batches_per_train_epoch
-    warmup_steps = num_warm_up_steps//num_batches_per_train_epoch
+    num_epochs = int(num_steps/num_batches_per_train_epoch)
+    warmup_steps = int(num_warm_up_steps/num_batches_per_train_epoch)
     num_epochs_to_converge = 10
     grad_clip_norm = 1
 
