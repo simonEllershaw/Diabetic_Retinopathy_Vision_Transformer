@@ -34,6 +34,8 @@ if __name__ == "__main__":
     data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
     model_name = sys.argv[2] if len(sys.argv) > 2 else "resnet50"
     lr = float(sys.argv[3]) if len(sys.argv) > 3 else 0.003
+    num_steps = float(sys.argv[3]) if len(sys.argv) > 3 else 2500
+    num_warm_up_steps = float(sys.argv[3]) if len(sys.argv) > 3 else 200
     
     dataset_name = "_eyePACS_"
     model_directory = os.path.join("runs", model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
@@ -43,18 +45,19 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, max_length=1000)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
 
     # Setup dataloaders
-    batch_size= 64#100
-    accumulation_steps = 512//batch_size
+    batch_size = 512
+    mini_batch_size= 64#100
+    accumulation_steps = batch_size//mini_batch_size
     print(accumulation_steps)
     num_workers = 4
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
-    dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=batch_size,
+    dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=mini_batch_size,
                                             shuffle=False, num_workers=num_workers)
                         for name in dataset_names}   
     dataloaders["train"].shuffle = True
@@ -67,8 +70,9 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
 
-    num_epochs = 100
-    warmup_steps = 10
+    num_batches_per_train_epoch = len(datasets["train"]) / batch_size
+    num_epochs = num_steps//num_batches_per_train_epoch
+    warmup_steps = num_warm_up_steps//num_batches_per_train_epoch
     num_epochs_to_converge = 10
     grad_clip_norm = 1
 
@@ -95,4 +99,4 @@ if __name__ == "__main__":
 
     writer.close()
 
-    evaluate.evaluate_model(model, device, dataloaders["val"], datasets["val"].get_labels(), batch_size, model_directory)
+    evaluate.evaluate_model(model, device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory)
