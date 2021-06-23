@@ -43,13 +43,15 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, max_length=1000)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
 
     # Setup dataloaders
     batch_size= 64#100
+    accumulation_steps = 512//batch_size
+    print(accumulation_steps)
     num_workers = 4
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
     dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=batch_size,
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     writer.add_figure('Input/val', fig)
 
     # # Main training loop
-    model, best_acc = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, model_directory, warmup_steps, num_epochs_to_converge, grad_clip_norm)
+    model, best_acc = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, model_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm)
 
     # Add sample inference outputs to tensorboard
     fig = visualisation.sample_batch(dataloaders["train"], class_names, model, device)

@@ -6,7 +6,7 @@ import visualisation
 
 #https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 
-def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, grad_clip_norm=0):
+def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm=0):
     best_loss = float('inf')
     model_param_fname = os.path.join(run_directory, "model_params.pt")
     num_epochs_no_improvement = 0
@@ -16,14 +16,14 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
         for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()
+                mini_batch_num = 1
             else:
                 model.eval()   
             running_loss = 0.0
             confusion_matrix = torch.zeros(nb_classes, nb_classes)
-            for inputs, labels, _ in dataloaders[phase]:
+            for mini_batch_num, (inputs, labels, _) in enumerate(dataloaders[phase]):
                 inputs = inputs.to(device)
                 labels = labels.long().to(device)
-                optimizer.zero_grad()
                 # forward
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
@@ -34,7 +34,11 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                         loss.backward()
                         if grad_clip_norm > 0:
                             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
-                        optimizer.step()
+                        if (mini_batch_num) % accumulation_steps == 0:
+                            optimizer.step()
+                            optimizer.zero_grad()
+                            mini_batch_num = 0
+                        mini_batch_num += 1
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
