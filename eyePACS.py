@@ -80,7 +80,7 @@ class EyePACS_Dataset(Dataset):
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
             torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2), fill=self.fill),
-            torchvision.transforms.ColorJitter(brightness=(0.5, 1.5), hue=0.5, contrast=(0.5,2), saturation=3)
+            torchvision.transforms.ColorJitter(brightness=(0.9, 1.1), hue=0.5, contrast=(0.5,2), saturation=3)
         ])
         return augment_transforms(img)
 
@@ -102,12 +102,19 @@ if __name__ == "__main__":
     # data.preprocess_all_images()
 
     data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
-    data.augment = True
+    data.augment = False
     idx = 12
     start_time = time.time()
     sample = data[idx]
-    print(time.time()-start_time)
-    print(sample[2])
+    # torch.set_printoptions(precision=10)
+    # print(sample[2])
+    # print(torch.mean(sample[0]), torch.std(sample[0]))
+    # np_image = sample[0].flatten().numpy()
+    # print(np_image.shape)
+    # plt.hist(np_image)
+    # plt.show()
+    # print(time.time()-start_time)
+    # print(sample[2])
     fig, ax = plt.subplots()
     visualisation.imshow(sample[0], ax)
     plt.show()
