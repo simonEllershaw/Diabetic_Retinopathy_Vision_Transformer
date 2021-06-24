@@ -25,12 +25,12 @@ class EyePACS_Dataset(Dataset):
         self.labels_df = labels if labels is not None else self.load_labels(random_state)
         self.length = max_length if max_length is not None else len(self.labels_df)
         self.img_dir = os.path.join(data_directory, "train", "train")
-        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_GP")
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
-        self.fill = 128
+        self.fill = 0
 
     def __len__(self):
         return self.length
@@ -79,8 +79,8 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.8,1.2), fill=self.fill),
-            torchvision.transforms.ColorJitter(brightness=(0.9, 1.1), hue=0.5, contrast=(0.5,2), saturation=3)
+            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1,0.1), scale=(0.75,1.25), fill=self.fill),
+            torchvision.transforms.ColorJitter(brightness=(0.5, 1.5), hue=0.1, contrast=(0.5,1.5), saturation=(0.5, 1.5))
         ])
         return augment_transforms(img)
 
@@ -102,8 +102,8 @@ if __name__ == "__main__":
     # data.preprocess_all_images()
 
     data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
-    data.augment = False
-    idx = 12
+    data.augment = True
+    idx = 15
     start_time = time.time()
     sample = data[idx]
     # torch.set_printoptions(precision=10)
