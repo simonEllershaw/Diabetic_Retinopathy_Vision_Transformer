@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, max_length=1000)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
