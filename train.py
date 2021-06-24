@@ -29,6 +29,7 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
+                    loss = loss / accumulation_steps
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
