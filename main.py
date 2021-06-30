@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=3000)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
     dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=mini_batch_size,
                                             shuffle=False, num_workers=num_workers)
-                        for name in dataset_names}   
-    dataloaders["train"].shuffle = True
+                        for name in ["val", "test"]}   
+    dataloaders["train"] = torch.utils.data.DataLoader(datasets["train"], batch_size=mini_batch_size, shuffle=True, num_workers=num_workers, drop_last = True)                     
 
     # Calc class inbalance and so loss function weights
     data_train_labels = np.array(datasets["train"].get_labels())
@@ -70,14 +70,14 @@ if __name__ == "__main__":
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
 
     num_batches_per_train_epoch = len(datasets["train"]) / batch_size
-    num_epochs = int(num_steps/num_batches_per_train_epoch)
-    warmup_steps = int(num_warm_up_steps/num_batches_per_train_epoch)
-    num_epochs_to_converge = 10
+    num_epochs = int(num_steps//num_batches_per_train_epoch)
+    warmup_steps = int(num_warm_up_steps//num_batches_per_train_epoch)
+    num_epochs_to_converge = 100
     grad_clip_norm = 1
 
     criterion = nn.CrossEntropyLoss(weight=loss_weights.to(device))
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-    scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_epochs, warmup_steps)
+    scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_steps, num_warm_up_steps)
     
     # Init tensorboard
     writer = SummaryWriter(model_directory)
@@ -98,4 +98,4 @@ if __name__ == "__main__":
 
     writer.close()
 
-    evaluate.evaluate_model(model, device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory)
+    evaluate.evaluate_model(model, device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory, "val")

@@ -39,15 +39,15 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                             optimizer.step()
                             optimizer.zero_grad()
                             mini_batch_num = 0
+                            scheduler.step()
                         mini_batch_num += 1
                 # statistics
-                running_loss += loss.item() * inputs.size(0)
+                running_loss += loss.item() * inputs.size(0) * accumulation_steps
                 confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
             epoch_loss = running_loss / dataset_sizes[phase]  
             if phase == 'train':
                 # Update LR
                 writer.add_scalar(tag="general/lr", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
-                scheduler.step()
             elif phase == 'val':
                 # Check if model performance has improved if so save model
                 if epoch_loss < best_loss:
