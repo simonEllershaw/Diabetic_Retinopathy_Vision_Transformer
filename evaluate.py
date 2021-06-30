@@ -29,9 +29,9 @@ def get_predictions(model, dataloader, num_samples, batch_size, device):
         outputs = model(inputs)
         probs = torch.nn.Softmax(1)(outputs)
         _, preds = torch.max(outputs, 1)
-        
-        prob_log[idx:min(idx+batch_size, num_samples)] = probs[:,1].detach()
-        pred_log[idx:min(idx+batch_size, num_samples)] = preds.detach()
+        batch_size = len(inputs)
+        prob_log[idx:idx+batch_size] = probs[:,1].detach()
+        pred_log[idx:idx+batch_size] = preds.detach()
         idx += batch_size
     return prob_log, pred_log
 
@@ -84,8 +84,8 @@ if __name__ == "__main__":
     print(sys.argv)
     data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
     model_directory = sys.argv[2] if len(sys.argv) > 2 else "runs\\06_30_Grid_Search\\resnetv2_50x1_bitm_in21k\\0.01"
-    model_name = sys.argv[3] if len(sys.argv) > 3 else "resnet50"
-    phase = sys.argv[4] if len(sys.argv) > 4 else "val"
+    model_name = sys.argv[3] if len(sys.argv) > 3 else "resnetv2_50x1_bitm_in21k"
+    phase = sys.argv[4] if len(sys.argv) > 4 else "test"
 
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
@@ -97,5 +97,5 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = load_model(model_directory, model_name, device)
 
-    labels = datasets["val"].get_labels()
+    labels = datasets[phase].get_labels()
     evaluate_model(model, device, dataloader, labels, batch_size, model_directory, phase)
