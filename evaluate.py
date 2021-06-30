@@ -63,19 +63,19 @@ def plot_ROC_curve(labels, prob_log, ax):
     ax.set_ylim(0,1)
     return auc
 
-def evaluate_model(model, device, dataloader, labels, batch_size, model_directory):
+def evaluate_model(model, device, dataloader, labels, batch_size, model_directory, phase):
     prob_log, pred_log = get_predictions(model, dataloader, len(labels), batch_size, device)
     metrics = calc_metrics(labels, pred_log)
     
     fig, ax = plt.subplots()
     metrics["Pre/Rec AUC"] = plot_precision_recall_curve(labels, prob_log, ax)
-    plt.savefig(os.path.join(model_directory, "precision_recall_curve.png"))
+    plt.savefig(os.path.join(model_directory, f"precision_recall_curve{phase}.png"))
     
     fig, ax = plt.subplots()
     metrics["ROC AUC"] = plot_ROC_curve(labels, prob_log, ax)
-    plt.savefig(os.path.join(model_directory, "ROC_curve.png"))
+    plt.savefig(os.path.join(model_directory, f"ROC_curve{phase}.png"))
     
-    with open(os.path.join(model_directory, "metrics.txt"), "w+") as f:
+    with open(os.path.join(model_directory, f"metrics{phase}.txt"), "w+") as f:
         f.write(pprint.pformat(metrics))
 
 if __name__ == "__main__":
@@ -83,18 +83,19 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     print(sys.argv)
     data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
-    model_directory = sys.argv[2] if len(sys.argv) > 2 else "runs\\22_6_21Exp\\resnet50_eyePACS_ColourJitter"
-    model_name = float(sys.argv[3]) if len(sys.argv) > 3 else "resnet50"
+    model_directory = sys.argv[2] if len(sys.argv) > 2 else "runs\\06_30_Grid_Search\\resnetv2_50x1_bitm_in21k\\0.01"
+    model_name = sys.argv[3] if len(sys.argv) > 3 else "resnet50"
+    phase = sys.argv[4] if len(sys.argv) > 4 else "val"
 
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=1000)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     batch_size = 100
-    dataloader = torch.utils.data.DataLoader(datasets["val"], batch_size=batch_size, shuffle=False, num_workers=4) 
+    dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = load_model(model_directory, model_name, device)
 
     labels = datasets["val"].get_labels()
-    evaluate_model(model, device, dataloader, labels, batch_size, model_directory)
+    evaluate_model(model, device, dataloader, labels, batch_size, model_directory, phase)
