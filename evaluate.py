@@ -38,12 +38,12 @@ def get_predictions(model, dataloader, num_samples, batch_size, device):
     return prob_log, pred_log
 
 def init_metrics_log_dict():
-    keys = ["accuracy", "precision_score", "recall_score", "f1", "Pre/Rec AUC", "ROC AUC"]
+    keys = ["accuracy", "precision_score", "recall_score", "f1", "Pre/Rec AUC", "ROC AUC", "conf_matrix"]
     metrics_log = {key: [] for key in keys}
     return metrics_log
 
 def calc_metrics(labels, pred_log, metrics_log):
-    # metrics_log["conf_matrix"] += sklearn.metrics.confusion_matrix(labels, pred_log)
+    metrics_log["conf_matrix"].append(sklearn.metrics.confusion_matrix(labels, pred_log))
     metrics_log["accuracy"].append(sklearn.metrics.accuracy_score(labels, pred_log))
     metrics_log["precision_score"].append(sklearn.metrics.precision_score(labels, pred_log))
     metrics_log["recall_score"].append(sklearn.metrics.recall_score(labels, pred_log))
