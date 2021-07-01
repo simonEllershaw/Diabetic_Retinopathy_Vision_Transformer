@@ -98,4 +98,4 @@ if __name__ == "__main__":
 
     writer.close()
 
-    evaluate.evaluate_model(model, device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory, "val")
+    evaluate.evaluate_models([model_name], [model_directory], device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory, "val")
