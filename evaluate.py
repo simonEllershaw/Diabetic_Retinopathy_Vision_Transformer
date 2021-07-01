@@ -12,9 +12,9 @@ import sys
 import time
 import pandas as pd
 
-def load_model(model_directory, model_name, device):
+def load_model(model_directory, model_name, device, class_names):
     model_fname = os.path.join(model_directory, "model_params.pt")
-    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names))
+    model = timm.create_model(model_name, num_classes=len(class_names))
     model.load_state_dict(torch.load(model_fname))
     model = model.eval().to(device)
     return model
@@ -38,12 +38,12 @@ def get_predictions(model, dataloader, num_samples, batch_size, device):
     return prob_log, pred_log
 
 def init_metrics_log_dict():
-    keys = ["accuracy", "precision_score", "recall_score", "f1", "Pre/Rec AUC", "ROC AUC"]
+    keys = ["accuracy", "precision_score", "recall_score", "f1", "Pre/Rec AUC", "ROC AUC", "conf_matrix"]
     metrics_log = {key: [] for key in keys}
     return metrics_log
 
 def calc_metrics(labels, pred_log, metrics_log):
-    # metrics_log["conf_matrix"] += sklearn.metrics.confusion_matrix(labels, pred_log)
+    metrics_log["conf_matrix"].append(sklearn.metrics.confusion_matrix(labels, pred_log))
     metrics_log["accuracy"].append(sklearn.metrics.accuracy_score(labels, pred_log))
     metrics_log["precision_score"].append(sklearn.metrics.precision_score(labels, pred_log))
     metrics_log["recall_score"].append(sklearn.metrics.recall_score(labels, pred_log))
@@ -71,13 +71,12 @@ def plot_ROC_curve(labels, prob_log, ax, model_name):
     ax.set_ylim(0,1)
     return auc
 
-def evaluate_models(model_names, model_directories, device, dataloader, labels, batch_size, eval_directory, phase):
+def evaluate_models(models, device, dataloader, labels, batch_size, eval_directory, phase, model_names):
     directory = os.path.join(eval_directory, time.strftime('%m_%d_%H_%M_%S'))
     os.mkdir(directory)
     fig, axs = plt.subplots(1, 2)
     metrics_log = init_metrics_log_dict()
-    for model_name, model_directory in zip(model_names, model_directories):
-        model = load_model(model_directory, model_name, device)
+    for model, model_name in zip(models, model_names):
         model.eval()
         prob_log, pred_log = get_predictions(model, dataloader, len(labels), batch_size, device)
         
@@ -108,7 +107,12 @@ if __name__ == "__main__":
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     batch_size = 100
     dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     labels = datasets[phase].get_labels()
-    evaluate_models(model_names, model_directories, device, dataloader, labels, batch_size, eval_directory, phase)
+    
+    
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    models = []
+    for model_name, model_directory in zip(model_names, model_directories):
+        models.append(load_model(model_directory, model_name, device, class_names))
+
+    evaluate_models(models, device, dataloader, labels, batch_size, eval_directory, phase, model_names)

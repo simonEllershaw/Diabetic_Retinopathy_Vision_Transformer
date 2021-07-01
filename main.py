@@ -98,5 +98,5 @@ if __name__ == "__main__":
 
     writer.close()
 
-    evaluate.evaluate_models([model_name], [model_directory], device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory, "val")
-    evaluate.evaluate_models([model_name], [model_directory], device, dataloaders["test"], datasets["test"].get_labels(), mini_batch_size, model_directory, "test")
+    evaluate.evaluate_models([model], device, dataloaders["val"], datasets["val"].get_labels(), mini_batch_size, model_directory, "val", [model_name])
+    evaluate.evaluate_models([model], device, dataloaders["test"], datasets["test"].get_labels(), mini_batch_size, model_directory, "test", [model_name])
