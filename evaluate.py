@@ -94,12 +94,11 @@ def evaluate_models(model_names, model_directories, device, dataloader, labels, 
     metrics_log_df.to_csv(os.path.join(directory, f"metrics_{phase}.txt"))
 
 if __name__ == "__main__":
-    torch.cuda.empty_cache()
     # Load datasets split into train, val and test
     print(sys.argv)
     data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
-    model_directory = sys.argv[2] if len(sys.argv) > 2 else "runs\\06_30_Grid_Search\\resnetv2_50x1_bitm_in21k\\0.01"
-    model_name = sys.argv[3] if len(sys.argv) > 3 else "resnetv2_50x1_bitm_in21k"
+    model_directorys = sys.argv[2] if len(sys.argv) > 2 else ["runs\\06_30_Grid_Search\\resnetv2_50x1_bitm_in21k\\0.01", "runs\\06_30_Grid_Search\\vit_small_patch16_224_in21k\\0.01"]
+    model_names = sys.argv[3] if len(sys.argv) > 3 else ["resnetv2_50x1_bitm_in21k", "vit_small_patch16_224_in21k"]
     phase = sys.argv[4] if len(sys.argv) > 4 else "test"
     eval_directory = "eval_data"
 
@@ -112,6 +111,4 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     labels = datasets[phase].get_labels()
-    model_names = ["resnetv2_50x1_bitm_in21k", "vit_small_patch16_224_in21k"]
-    model_directories = ["runs\\06_30_Grid_Search\\resnetv2_50x1_bitm_in21k\\0.01", "runs\\06_30_Grid_Search\\vit_small_patch16_224_in21k\\0.01"]
     evaluate_models(model_names, model_directories, device, dataloader, labels, batch_size, eval_directory, phase)
