@@ -32,8 +32,8 @@ if __name__ == "__main__":
     # Set up directory for experiment
     print(sys.argv)
     data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
-    model_name = sys.argv[2] if len(sys.argv) > 2 else "resnet50"
-    lr = float(sys.argv[3]) if len(sys.argv) > 3 else 0.003
+    model_name = sys.argv[2] if len(sys.argv) > 2 else "vit_small_patch16_224_in21k"
+    lr = float(sys.argv[3]) if len(sys.argv) > 3 else 0.01
     num_steps = int(sys.argv[4]) if len(sys.argv) > 4 else 2500
     num_warm_up_steps = int(sys.argv[5]) if len(sys.argv) > 5 else 200
     
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13)#, max_length=3000)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, max_length=3000)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=True
