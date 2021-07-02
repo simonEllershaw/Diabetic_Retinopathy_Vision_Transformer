@@ -27,7 +27,6 @@ def get_predictions(model, dataloader, num_samples, batch_size, device):
 
     for inputs, labels, _ in dataloader:
         inputs = inputs.to(device)
-        labels = labels.to(device)
         outputs = model(inputs)
         probs = torch.nn.Softmax(1)(outputs)
         _, preds = torch.max(outputs, 1)
