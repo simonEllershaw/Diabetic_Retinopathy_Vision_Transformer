@@ -88,7 +88,7 @@ if __name__ == "__main__":
     writer.add_figure('Input/val', fig)
 
     # # Main training loop
-    # model, best_acc = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, model_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm)
+    model, best_loss = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, model_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm)
 
     # Add sample inference outputs to tensorboard
     fig = visualisation.sample_batch(dataloaders["train"], class_names, model, device)
