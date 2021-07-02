@@ -25,12 +25,12 @@ class EyePACS_Dataset(Dataset):
         self.labels_df = labels if labels is not None else self.load_labels(random_state)
         self.length = max_length if max_length is not None else len(self.labels_df)
         self.img_dir = os.path.join(data_directory, "train", "train")
-        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_GP")
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
-        self.fill = 128
+        self.fill = 0
 
     def __len__(self):
         return self.length
@@ -86,7 +86,8 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1,0.1), scale=(0.75,1.25), fill=self.fill),
+            torchvision.transforms.RandomAffine(degrees=10, fill=self.fill),#, translate=(0.1,0.1), scale=(0.75,1.25), fill=self.fill),
+            torchvision.transforms.ColorJitter(brightness=0.3, contrast=0.2),
         ])
         return augment_transforms(img)
 
