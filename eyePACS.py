@@ -49,7 +49,15 @@ class EyePACS_Dataset(Dataset):
 
     def load_labels(self, random_state=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
-        labels_df = pd.read_csv(label_fname).sample(frac=1, random_state=random_state).reset_index(drop=True)
+        gradability_fname = os.path.join(self.data_directory, "eyepacs_gradability_grades.csv")
+
+        labels_df = pd.read_csv(label_fname)
+        gradabilty_df = pd.read_csv(gradability_fname, delimiter = " ")
+        labels_df = pd.merge(labels_df, gradabilty_df, how="inner", left_on=labels_df.columns[0], right_on=gradabilty_df.columns[0])
+        
+        labels_df = labels_df.drop(labels_df[labels_df["gradability"]==0].index)
+        labels_df = labels_df.drop(columns=['image_name', 'gradability'])
+        labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         labels_df.level = np.where(labels_df.level>1, 1, 0)
         return labels_df
 
@@ -100,6 +108,7 @@ if __name__ == "__main__":
     # data.preprocess_all_images()
 
     data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
+    print(len(data))
     data.augment = True
     idx = 15
     start_time = time.time()
