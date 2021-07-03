@@ -24,7 +24,7 @@ class EyePACS_Dataset(Dataset):
         self.data_directory = data_directory
         self.labels_df = labels if labels is not None else self.load_labels(random_state, max_length)
         self.img_dir = os.path.join(data_directory, "train", "train")
-        self.img_dir_preprocessed = os.path.join(self.data_directory, "train")
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_448")
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
@@ -75,7 +75,7 @@ class EyePACS_Dataset(Dataset):
         for idx in range(len(self)):
             fname = self.labels_df.loc[idx].image + ".jpeg"
             img = cv2.imread(os.path.join(self.img_dir, fname))
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             try:
                 img = self.preprocess_image(img)
                 cv2.imwrite(os.path.join(self.img_dir_preprocessed, fname), img)
@@ -104,17 +104,17 @@ class EyePACS_Dataset(Dataset):
         return subsets
                 
 if __name__ == "__main__":
-    # start_time = time.time()
-    # data_directory = "diabetic-retinopathy-detection"#sys.argv[1]
-    # data = EyePACS_Dataset(data_directory)
-    # data.preprocess_all_images()
-
-    data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
-    print(len(data))
-    data.augment = True
-    idx = 15
     start_time = time.time()
-    sample = data[idx]
+    data_directory = "diabetic-retinopathy-detection"#sys.argv[1]
+    data = EyePACS_Dataset(data_directory, random_state=13, max_length=10)
+    data.preprocess_all_images()
+
+    # data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
+    # print(len(data))
+    # data.augment = True
+    # idx = 15
+    # start_time = time.time()
+    # sample = data[idx]
     # torch.set_printoptions(precision=10)
     # print(sample[2])
     # print(torch.mean(sample[0]), torch.std(sample[0]))
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # plt.show()
     # print(time.time()-start_time)
     # print(sample[2])
-    fig, ax = plt.subplots()
-    visualisation.imshow(sample[0], ax)
-    plt.show()
+    # fig, ax = plt.subplots()
+    # visualisation.imshow(sample[0], ax)
+    # plt.show()
     
