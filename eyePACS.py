@@ -22,18 +22,17 @@ class EyePACS_Dataset(Dataset):
     def __init__(self, data_directory, labels=None, max_length=None, random_state=None):
         # Load and extract config variables
         self.data_directory = data_directory
-        self.labels_df = labels if labels is not None else self.load_labels(random_state)
-        self.length = max_length if max_length is not None else len(self.labels_df)
+        self.labels_df = labels if labels is not None else self.load_labels(random_state, max_length)
         self.img_dir = os.path.join(data_directory, "train", "train")
-        self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed")
+        self.img_dir_preprocessed = os.path.join(self.data_directory, "train")
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = 224
-        self.fill = 0
+        self.fill = 128
 
     def __len__(self):
-        return self.length
+        return len(self.labels_df)
 
     def __getitem__(self, idx):
         # Extract sample's metadata
@@ -47,7 +46,7 @@ class EyePACS_Dataset(Dataset):
         img = torchvision.transforms.ToTensor()(img)
         return img, label, metadata.image
 
-    def load_labels(self, random_state=None):
+    def load_labels(self, random_state=None, max_length=None):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
         gradability_fname = os.path.join(self.data_directory, "eyepacs_gradability_grades.csv")
 
@@ -59,6 +58,8 @@ class EyePACS_Dataset(Dataset):
         labels_df = labels_df.drop(columns=['image_name', 'gradability'])
         labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         labels_df.level = np.where(labels_df.level>1, 1, 0)
+        labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
+
         return labels_df
 
     def get_labels(self):
@@ -86,7 +87,7 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.RandomAffine(degrees=10, fill=self.fill),#, translate=(0.1,0.1), scale=(0.75,1.25), fill=self.fill),
+            # torchvision.transforms.RandomAffine(degrees=10, fill=self.fill),#, translate=(0.1,0.1), scale=(0.75,1.25), fill=self.fill),
             torchvision.transforms.ColorJitter(brightness=0.3, contrast=0.2),
         ])
         return augment_transforms(img)
