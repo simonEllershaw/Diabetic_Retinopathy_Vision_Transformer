@@ -68,20 +68,6 @@ class EyePACS_Dataset(Dataset):
     def preprocess_image(self, img):
         # Crop image according to bounding box then resize imge
         return transforms.GrahamPreprocessing(img)
-
-    def preprocess_all_images(self):
-        if not os.path.exists(self.img_dir_preprocessed):
-            os.makedirs(self.img_dir_preprocessed)
-        for idx in range(len(self)):
-            fname = self.labels_df.loc[idx].image + ".jpeg"
-            img = cv2.imread(os.path.join(self.img_dir, fname))
-            # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            try:
-                img = self.preprocess_image(img)
-                cv2.imwrite(os.path.join(self.img_dir_preprocessed, fname), img)
-            except:
-                print(fname)
-
     
     def augmentation(self, img):
         augment_transforms = torchvision.transforms.Compose([
@@ -105,7 +91,7 @@ class EyePACS_Dataset(Dataset):
                 
 if __name__ == "__main__":
     start_time = time.time()
-    data_directory = "diabetic-retinopathy-detection"#sys.argv[1]
+    data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
     data = EyePACS_Dataset(data_directory, random_state=13, max_length=10)
     data.preprocess_all_images()
 

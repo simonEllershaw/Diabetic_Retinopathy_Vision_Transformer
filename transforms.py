@@ -5,6 +5,18 @@ import cv2
 
 import matplotlib.pyplot as plt
 import time
+import sys
+
+def preprocess_all_images(img_dir, img_dir_preprocessed):
+    if not os.path.exists(self.img_dir_preprocessed):
+        os.makedirs(self.img_dir_preprocessed)
+    for fname in os.listdir(img_dir):
+        img = cv2.imread(os.path.join(self.img_dir, fname))
+        try:
+            img = GrahamPreprocessing(img)
+            cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
+        except:
+            print(fname)
 
 def GrahamPreprocessing(img):
     x_min, y_min, radius_inital = calc_cropbox_dim(img)
@@ -93,12 +105,17 @@ def calc_cropbox_dim(img):
     return top_left_coord[0], top_left_coord[1], round(radius)
 
 if __name__ == "__main__":
-    fig, axes = plt.subplots(1,2)
     start_time = time.time()
-    image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\10_left.jpeg")
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    axes[0].imshow(image)
-    image = GrahamPreprocessing(image)
-    print(time.time()-start_time)
-    axes[1].imshow(image)
-    plt.show()
+    img_dir = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection\\train\\train"
+    img_dir_preprocessed = sys.argv[2] if len(sys.argv) > 2 else "diabetic-retinopathy-detection\\preprocessed_448"
+    preprocess_all_images(img_dir, img_dir_preprocessed)
+    
+    # fig, axes = plt.subplots(1,2)
+    # start_time = time.time()
+    # image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\10_left.jpeg")
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # axes[0].imshow(image)
+    # image = GrahamPreprocessing(image)
+    # print(time.time()-start_time)
+    # axes[1].imshow(image)
+    # plt.show()
