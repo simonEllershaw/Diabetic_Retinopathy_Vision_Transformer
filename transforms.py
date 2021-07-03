@@ -16,9 +16,9 @@ def GrahamPreprocessing(img):
     img = img[y_min:y_min+radius_inital*2, x_min:x_min+radius_inital*2]
     radius_scaled = 500       
     img = rescale_image(img, radius_inital, radius_scaled)
-    img = subtract_average_local_colour(img)
-    img = threshold_boundary(img, round(radius_scaled*0.9))
-    img = cv2.resize(img, [224,224])
+    # img = subtract_average_local_colour(img)
+    # img = threshold_boundary(img, round(radius_scaled*0.9))
+    img = cv2.resize(img, [448,448])
     return img
 
 def estimate_radius(image):
