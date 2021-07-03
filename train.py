@@ -44,7 +44,8 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                 # statistics
                 running_loss += loss.item() * inputs.size(0) * accumulation_steps
                 confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
-            epoch_loss = running_loss / dataset_sizes[phase]  
+            epoch_loss = running_loss / dataset_sizes[phase]
+            print(epoch, phase, epoch_loss)  
             if phase == 'train':
                 # Update LR
                 writer.add_scalar(tag="general/lr", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
