@@ -6,10 +6,14 @@ import torchvision
 import torch
 import inference
 import itertools
+from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
+
 
 def imshow(inp, ax, title=None):
     """Imshow for Tensor."""
     inp = inp.numpy().transpose((1, 2, 0))
+    inp = IMAGENET_INCEPTION_STD * inp + IMAGENET_INCEPTION_MEAN
+    inp = np.clip(inp, 0, 1)
     ax.imshow(inp)
     if title is not None:
         ax.set_title(title)
