@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, labels=None, max_length=None, random_state=None):
+    def __init__(self, data_directory, labels=None, max_length=None, random_state=None, img_size=384):
         # Load and extract config variables
         self.data_directory = data_directory
         self.labels_df = labels if labels is not None else self.load_labels(random_state, max_length)
@@ -29,7 +29,7 @@ class EyePACS_Dataset(Dataset):
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
-        self.img_size = 224
+        self.img_size = img_size
         self.fill = 128
 
     def __len__(self):
@@ -42,7 +42,7 @@ class EyePACS_Dataset(Dataset):
         # Load and transform img
         img_path = os.path.join(self.img_dir_preprocessed, metadata.image + ".jpeg")
         img = Image.open(img_path)
-        img = torchvision.transforms.Resize(384)(img)
+        img = torchvision.transforms.Resize(self.img_size)(img)
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
