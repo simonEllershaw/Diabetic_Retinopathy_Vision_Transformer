@@ -46,7 +46,7 @@ class EyePACS_Dataset(Dataset):
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
-        img = torchvision.transforms.Normalize(IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD)(img)
+        # img = torchvision.transforms.Normalize(IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD)(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None, max_length=None):
@@ -89,7 +89,7 @@ class EyePACS_Dataset(Dataset):
         labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
         labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
         labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset]) for subset in dataset_names}
+        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset], img_size=self.img_size) for subset in dataset_names}
         return subsets
                 
 if __name__ == "__main__":
