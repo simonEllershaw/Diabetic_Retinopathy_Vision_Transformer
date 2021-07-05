@@ -12,6 +12,7 @@ from transforms import GrahamPreprocessing
 import random
 from PIL import Image
 import sys
+from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 
 # Test 
 import visualisation
@@ -41,9 +42,11 @@ class EyePACS_Dataset(Dataset):
         # Load and transform img
         img_path = os.path.join(self.img_dir_preprocessed, metadata.image + ".jpeg")
         img = Image.open(img_path)
+        img = torchvision.transforms.Resize(384)(img)
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
+        img = torchvision.transforms.Normalize(IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD)(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None, max_length=None):
