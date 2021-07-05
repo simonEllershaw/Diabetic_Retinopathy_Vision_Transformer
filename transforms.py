@@ -6,17 +6,19 @@ import cv2
 import matplotlib.pyplot as plt
 import time
 import sys
+import os 
 
 def preprocess_all_images(img_dir, img_dir_preprocessed):
-    if not os.path.exists(self.img_dir_preprocessed):
-        os.makedirs(self.img_dir_preprocessed)
+    if not os.path.exists(img_dir_preprocessed):
+        os.makedirs(img_dir_preprocessed)
     for fname in os.listdir(img_dir):
-        img = cv2.imread(os.path.join(self.img_dir, fname))
+        img = cv2.imread(os.path.join(img_dir, fname))
         try:
             img = GrahamPreprocessing(img)
             cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
         except:
             print(fname)
+        
 
 def GrahamPreprocessing(img):
     x_min, y_min, radius_inital = calc_cropbox_dim(img)
@@ -100,7 +102,7 @@ def calc_cropbox_dim(img):
     center[0], center[1] = np.median(non_zero_columns), np.median(non_zero_rows)
     # Radius is max boundary difference, add stride to conservatively account
     # for uncertainity due to it's use and pad by 5%
-    radius = ((max(boundary_coords[1] - boundary_coords[0])/2)+stride)*1.05
+    radius = (max(boundary_coords[1] - boundary_coords[0])/2) + stride
     top_left_coord = ((center - radius)).astype(int)
     return top_left_coord[0], top_left_coord[1], round(radius)
 
