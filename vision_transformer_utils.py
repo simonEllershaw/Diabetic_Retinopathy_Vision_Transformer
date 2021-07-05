@@ -14,7 +14,7 @@ def resize_ViT(model, new_input_size):
     model.pos_embed = torch.nn.Parameter(pos_embed_new)
     return model
 
-if __name__ = "__main__":
+if __name__ == "__main__":
     inp = torch.ones((3, 3, 384, 384))*0.5
     model = timm.create_model("vit_small_patch16_224_in21k", pretrained=True, num_classes=5)
     model = resize_ViT(model, 384)
