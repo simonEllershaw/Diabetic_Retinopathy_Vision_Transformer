@@ -98,9 +98,7 @@ def plot_precision_recall_curve(labels, prob_log, ax):
 def calc_shortest_distance_threshold(precision, recall, thresholds):
     # distance from (1,1)
     distances = np.sqrt((1-precision)**2+(1-recall)**2)
-    print(distances)
     idx = np.argmin(distances)
-    print(distances[idx], thresholds[idx])
     return np.float64(thresholds[idx])
 
 def plot_ROC_curve(labels, prob_log, ax):
