@@ -14,6 +14,37 @@ import pandas as pd
 from vision_transformer_utils import resize_ViT 
 import json
 
+def evaluate_models(models, device, dataloader, labels, model_directory, phase, model_name):
+    fig, axs = plt.subplots(1, 2)
+    metrics_log = {}
+    
+    prob_log = get_model_prob_outputs(model, dataloader, device)
+
+    auc, threshold = plot_precision_recall_curve(labels, prob_log, axs[0], model_name)
+    metrics_log["threshold"] = threshold
+    metrics_log["Pre/Rec AUC"] = auc
+    metrics_log["ROC AUC"] = plot_ROC_curve(labels, prob_log, axs[1], model_name)
+    
+    # Threshold is defined by validation set not test set!
+    if phase != "val":
+        threshold = get_threshold_from_val_metrics(model_directory)
+
+    pred_log = torch.where(prob_log>=threshold, 1, 0)
+    metrics_log = calc_metrics(labels, pred_log, metrics_log)
+    metrics_log["prob_log"] = prob_log.numpy().tolist()
+    metrics_log["pred_log"] = prob_log.numpy().tolist()
+
+    metrics_directory = os.path.join(model_directory, f"metrics_{phase}")
+    os.mkdir(metrics_directory)
+
+    axs[0].legend()
+    axs[1].legend()
+    fig.set_size_inches(18.5, 10.5)
+    plt.savefig(os.path.join(metrics_directory, "AUC_curves.png"), dpi=100)
+
+    with open(os.path.join(metrics_directory, "metrics.txt"), "w+") as f:
+        json.dump(metrics_log, f, indent=4)
+
 def load_model(model_directory, model_name, device, class_names, model_resize=-1):
     model_fname = os.path.join(model_directory, "model_params.pt")
     model = timm.create_model(model_name, num_classes=len(class_names))
@@ -23,43 +54,35 @@ def load_model(model_directory, model_name, device, class_names, model_resize=-1
     model = model.eval().to(device)
     return model
 
-def get_predictions(model, dataloader, device):
+def get_model_prob_outputs(model, dataloader, device):
     torch.set_grad_enabled(False)
     num_samples = len(dataloader.dataset)
     prob_log = torch.zeros(num_samples) 
-    pred_log = torch.zeros(num_samples) 
     idx = 0
 
     for inputs, labels, _ in dataloader:
         inputs = inputs.to(device)
         outputs = model(inputs)
         probs = torch.nn.Softmax(1)(outputs)
-        _, preds = torch.max(outputs, 1)
 
         batch_size = len(inputs)
         prob_log[idx:idx+batch_size] = probs[:,1].detach()
-        pred_log[idx:idx+batch_size] = preds.detach()
         idx += batch_size
-    return prob_log, pred_log
-
-def init_metrics_log_dict():
-    keys = ["accuracy", "threshold", "precision_score", "recall_score", "f1", "Pre/Rec AUC", "ROC AUC", "conf_matrix"]
-    metrics_log = {key: [] for key in keys}
-    return metrics_log
+    return prob_log
 
 def calc_metrics(labels, pred_log, metrics_log):
-    metrics_log["conf_matrix"].append(sklearn.metrics.confusion_matrix(labels, pred_log))
-    metrics_log["accuracy"].append(sklearn.metrics.accuracy_score(labels, pred_log))
-    metrics_log["precision_score"].append(sklearn.metrics.precision_score(labels, pred_log))
-    metrics_log["recall_score"].append(sklearn.metrics.recall_score(labels, pred_log))
-    metrics_log["f1"].append(sklearn.metrics.f1_score(labels, pred_log))
+    metrics_log["accuracy"] = sklearn.metrics.accuracy_score(labels, pred_log)
+    metrics_log["precision_score"] = sklearn.metrics.precision_score(labels, pred_log)
+    metrics_log["recall_score"] = sklearn.metrics.recall_score(labels, pred_log)
+    metrics_log["f1"] = sklearn.metrics.f1_score(labels, pred_log)
+    metrics_log["conf_matrix"] = sklearn.metrics.confusion_matrix(labels, pred_log).tolist()
     return metrics_log
 
 def plot_precision_recall_curve(labels, prob_log, ax, model_name):
     precision, recall, thresholds = sklearn.metrics.precision_recall_curve(labels, prob_log)
     fscore = (2 * precision * recall) / (precision + recall)
     ix = np.argmax(fscore)
-    threshold = thresholds[ix]
+    threshold = np.float64(thresholds[ix])
     auc = sklearn.metrics.auc(recall, precision)
     pr_display = sklearn.metrics.PrecisionRecallDisplay(precision=precision, recall=recall).plot(ax, label=model_name)
     ax.scatter(recall[ix], precision[ix], marker='o', color='black', label=f'Best {model_name}')
@@ -81,86 +104,38 @@ def plot_ROC_curve(labels, prob_log, ax, model_name):
     ax.set_ylim(0,1)
     return auc
 
-def get_threshold_from_val_metrics(eval_directory):
-    val_metrics_file = os.path.join(eval_directory, "metrics_val", "metrics.txt")
-    val_metrics = pd.read_csv(val_metrics_file)
-    print(val_metrics)
-
-
-def evaluate_models(models, device, dataloader, labels, eval_directory, phase, model_names):
-    fig, axs = plt.subplots(1, 2)
-    metrics_log = init_metrics_log_dict()
-    for model, model_name in zip(models, model_names):
-        model.eval()
-        prob_log, pred_log = get_predictions(model, dataloader, device)
-
-        auc, threshold = plot_precision_recall_curve(labels, prob_log, axs[0], model_name)
-        metrics_log["Pre/Rec AUC"].append(auc)
-        metrics_log["threshold"].append(threshold)
-        metrics_log["ROC AUC"].append(plot_ROC_curve(labels, prob_log, axs[1], model_name))
-        # if phase != "val":
-
-        pred_log[prob_log>=threshold] = 1
-        pred_log[prob_log<threshold] = 0
-        metrics_log = calc_metrics(labels, pred_log, metrics_log)
-        
-    directory = os.path.join(eval_directory, f"metrics_{phase}")
-    os.mkdir(directory)
-
-    axs[0].legend()
-    axs[1].legend()
-    fig.set_size_inches(18.5, 10.5)
-    plt.savefig(os.path.join(directory, f"eval_curves_{phase}.png"), dpi=100)
-
-    metrics_log_df = pd.DataFrame.from_dict(metrics_log, orient='index', columns=model_names)
-    metrics_log_df.to_csv(os.path.join(directory, f"metrics.txt"))
+def get_threshold_from_val_metrics(model_directory):
+    val_metrics_file = os.path.join(model_directory, "metrics_val", "metrics.txt")
+    with open(val_metrics_file, "r") as f:
+        val_metrics = json.load(f)
+    return val_metrics["threshold"]
 
 if __name__ == "__main__":
     # Load datasets split into train, val and test
     print(sys.argv)
     data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
-    model_directories = sys.argv[2] if len(sys.argv) > 2 else ["runs\\06_30_Grid_Search\\resnetv2_50x1_bitm_in21k\\0.01", "runs\\06_30_Grid_Search\\vit_small_patch16_224_in21k\\0.01"]
-    model_names = sys.argv[3] if len(sys.argv) > 3 else ["resnetv2_50x1_bitm_in21k", "vit_small_patch16_224_in21k"]
-    phase = sys.argv[4] if len(sys.argv) > 4 else "test"
-    eval_directory = "eval_data"
-
-    model_directories = [r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"]
-    model_names = ["vit_small_patch16_224_in21k"]
-    phase = "val"
-    eval_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+    model_directory = sys.argv[2] if len(sys.argv) > 2 else r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+    model_name = sys.argv[3] if len(sys.argv) > 3 else "vit_small_patch16_224_in21k"#"resnetv2_50x1_bitm_in21k"
+    phase = sys.argv[4] if len(sys.argv) > 4 else "val"
 
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     batch_size = 64
-    dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
-    labels = datasets[phase].get_labels()
+    
     
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    models = []
-    for model_name, model_directory in zip(model_names, model_directories):
-        models.append(load_model(model_directory, model_name, device, class_names, 384))
-    evaluate_models(models, device, dataloader, labels, eval_directory, phase, model_names)
-    
-    # model_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
-    # model = load_model(model_directory, "vit_small_patch16_224_in21k", device, class_names, model_resize=384)
-    # model_outputs = {}
-    # model_outputs["prob_log"], model_outputs["pred_log"] = get_predictions(model, dataloader, device)
-    # threshold = 0.74159604
-    # model_outputs["pred_log"] = torch.where(model_outputs["prob_log"]>=threshold, 1, 0)
-    # model_outputs = {key: value.numpy().tolist() for key, value in model_outputs.items()}
-    # with open(os.path.join(model_directory, f"outputs"), "w+") as f:
-    #     json.dump(model_outputs, f)
-    
-    # model_directory = r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01"
-    # model = load_model(model_directory, "resnetv2_50x1_bitm", device, class_names)
-    # model_outputs = {}
-    # model_outputs["prob_log"], model_outputs["pred_log"] = get_predictions(model, dataloader, device)
-    # model_outputs = {key: value.numpy().tolist() for key, value in model_outputs.items()}
-    # with open(os.path.join(model_directory, f"outputs"), "w+") as f:
-    #     json.dump(model_outputs, f)
+    model = load_model(model_directory, model_name, device, class_names, 384)
+    phase = "val"
+    dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
+    labels = datasets[phase].get_labels()
+    evaluate_models(model, device, dataloader, labels, model_directory, phase, model_name)
+    phase = "test"
+    dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
+    labels = datasets[phase].get_labels()
+    evaluate_models(model, device, dataloader, labels, model_directory, "test", model_name)
 
 
     # model_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
