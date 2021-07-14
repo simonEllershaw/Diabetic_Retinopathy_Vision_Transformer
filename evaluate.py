@@ -11,16 +11,21 @@ import pprint
 import sys
 import time
 import pandas as pd
+from vision_transformer_utils import resize_ViT 
+import json
 
-def load_model(model_directory, model_name, device, class_names):
+def load_model(model_directory, model_name, device, class_names, model_resize=-1):
     model_fname = os.path.join(model_directory, "model_params.pt")
     model = timm.create_model(model_name, num_classes=len(class_names))
+    if model_resize > 0:
+        model = resize_ViT(model, model_resize)
     model.load_state_dict(torch.load(model_fname))
     model = model.eval().to(device)
     return model
 
-def get_predictions(model, dataloader, num_samples, batch_size, device):
+def get_predictions(model, dataloader, device):
     torch.set_grad_enabled(False)
+    num_samples = len(dataloader.dataset)
     prob_log = torch.zeros(num_samples) 
     pred_log = torch.zeros(num_samples) 
     idx = 0
@@ -30,6 +35,7 @@ def get_predictions(model, dataloader, num_samples, batch_size, device):
         outputs = model(inputs)
         probs = torch.nn.Softmax(1)(outputs)
         _, preds = torch.max(outputs, 1)
+
         batch_size = len(inputs)
         prob_log[idx:idx+batch_size] = probs[:,1].detach()
         pred_log[idx:idx+batch_size] = preds.detach()
@@ -75,22 +81,30 @@ def plot_ROC_curve(labels, prob_log, ax, model_name):
     ax.set_ylim(0,1)
     return auc
 
-def evaluate_models(models, device, dataloader, labels, batch_size, eval_directory, phase, model_names):
+def get_threshold_from_val_metrics(eval_directory):
+    val_metrics_file = os.path.join(eval_directory, "metrics_val", "metrics.txt")
+    val_metrics = pd.read_csv(val_metrics_file)
+    print(val_metrics)
+
+
+def evaluate_models(models, device, dataloader, labels, eval_directory, phase, model_names):
     fig, axs = plt.subplots(1, 2)
     metrics_log = init_metrics_log_dict()
     for model, model_name in zip(models, model_names):
         model.eval()
-        prob_log, pred_log = get_predictions(model, dataloader, len(labels), batch_size, device)
+        prob_log, pred_log = get_predictions(model, dataloader, device)
 
         auc, threshold = plot_precision_recall_curve(labels, prob_log, axs[0], model_name)
         metrics_log["Pre/Rec AUC"].append(auc)
         metrics_log["threshold"].append(threshold)
         metrics_log["ROC AUC"].append(plot_ROC_curve(labels, prob_log, axs[1], model_name))
+        # if phase != "val":
+
         pred_log[prob_log>=threshold] = 1
         pred_log[prob_log<threshold] = 0
         metrics_log = calc_metrics(labels, pred_log, metrics_log)
         
-    directory = os.path.join(eval_directory, time.strftime('%m_%d_%H_%M_%S'))
+    directory = os.path.join(eval_directory, f"metrics_{phase}")
     os.mkdir(directory)
 
     axs[0].legend()
@@ -99,7 +113,7 @@ def evaluate_models(models, device, dataloader, labels, batch_size, eval_directo
     plt.savefig(os.path.join(directory, f"eval_curves_{phase}.png"), dpi=100)
 
     metrics_log_df = pd.DataFrame.from_dict(metrics_log, orient='index', columns=model_names)
-    metrics_log_df.to_csv(os.path.join(directory, f"metrics_{phase}.txt"))
+    metrics_log_df.to_csv(os.path.join(directory, f"metrics.txt"))
 
 if __name__ == "__main__":
     # Load datasets split into train, val and test
@@ -110,8 +124,13 @@ if __name__ == "__main__":
     phase = sys.argv[4] if len(sys.argv) > 4 else "test"
     eval_directory = "eval_data"
 
+    model_directories = [r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"]
+    model_names = ["vit_small_patch16_224_in21k"]
+    phase = "val"
+    eval_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=224)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     batch_size = 64
@@ -122,6 +141,42 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     models = []
     for model_name, model_directory in zip(model_names, model_directories):
-        models.append(load_model(model_directory, model_name, device, class_names))
+        models.append(load_model(model_directory, model_name, device, class_names, 384))
+    evaluate_models(models, device, dataloader, labels, eval_directory, phase, model_names)
+    
+    # model_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+    # model = load_model(model_directory, "vit_small_patch16_224_in21k", device, class_names, model_resize=384)
+    # model_outputs = {}
+    # model_outputs["prob_log"], model_outputs["pred_log"] = get_predictions(model, dataloader, device)
+    # threshold = 0.74159604
+    # model_outputs["pred_log"] = torch.where(model_outputs["prob_log"]>=threshold, 1, 0)
+    # model_outputs = {key: value.numpy().tolist() for key, value in model_outputs.items()}
+    # with open(os.path.join(model_directory, f"outputs"), "w+") as f:
+    #     json.dump(model_outputs, f)
+    
+    # model_directory = r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01"
+    # model = load_model(model_directory, "resnetv2_50x1_bitm", device, class_names)
+    # model_outputs = {}
+    # model_outputs["prob_log"], model_outputs["pred_log"] = get_predictions(model, dataloader, device)
+    # model_outputs = {key: value.numpy().tolist() for key, value in model_outputs.items()}
+    # with open(os.path.join(model_directory, f"outputs"), "w+") as f:
+    #     json.dump(model_outputs, f)
 
-    evaluate_models(models, device, dataloader, labels, batch_size, eval_directory, phase, model_names)
+
+    # model_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+    # with open(os.path.join(model_directory, f"outputs"), "r") as f:
+    #     model_outputs_ViT = json.load(f)
+    # model_outputs_ViT = {key: np.array(value) for key, value in model_outputs_ViT.items()}
+    
+    # model_directory = r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01"
+    # with open(os.path.join(model_directory, f"outputs"), "r") as f:
+    #     model_outputs_BiT = json.load(f)
+    # model_outputs_BiT = {key: np.array(value) for key, value in model_outputs_BiT.items()}
+
+    # from sklearn.metrics import confusion_matrix
+    # print(sum(model_outputs_ViT["pred_log"]))
+    # print(sum(model_outputs_BiT["pred_log"]))
+    # print(confusion_matrix(labels, model_outputs_BiT["pred_log"]))
+    # print(confusion_matrix(labels, model_outputs_ViT["pred_log"]))
+    # print(confusion_matrix(model_outputs_ViT["pred_log"], model_outputs_BiT["pred_log"]))
+    
