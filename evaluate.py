@@ -17,40 +17,44 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sn
 from shutil import copyfile
 
+def evaluate_model(model, model_directory, datasets, phase):
+    dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=64, shuffle=False, num_workers=4) 
+    prob_log = get_model_prob_outputs(model, dataloader, device).numpy()
+    labels = datasets[phase].get_labels()
+    evaluate_prob_outputs(prob_log, labels, model_directory, phase)
 
-def evaluate_models(models, device, dataloader, labels, model_directory, phase):
+def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
     fig, axs = plt.subplots(1, 2)
     metrics_log = {}
-    
-    prob_log = get_model_prob_outputs(model, dataloader, device)
 
     auc, threshold = plot_precision_recall_curve(labels, prob_log, axs[0])
     metrics_log["threshold"] = threshold
     # Threshold is defined by validation set not test set!
     if phase != "val":
-        threshold = get_threshold_from_val_metrics(model_directory)
+        threshold = get_threshold_from_val_metrics(metrics_directory)
 
     metrics_log["Pre/Rec AUC"] = auc
     metrics_log["ROC AUC"] = plot_ROC_curve(labels, prob_log, axs[1])
 
-
-    pred_log = torch.where(prob_log>=threshold, 1, 0)
+    pred_log = np.where(prob_log>=threshold, 1, 0)
     metrics_log = calc_metrics(labels, pred_log, metrics_log)
-    metrics_log["prob_log"] = prob_log.numpy().tolist()
-    metrics_log["pred_log"] = pred_log.numpy().tolist()
+    metrics_log["prob_log"] = prob_log.tolist()
+    metrics_log["pred_log"] = pred_log.tolist()
 
     axs[0].scatter(metrics_log["recall_score"], metrics_log["precision_score"], marker='o', color='black', label='Proposed Threshold')
 
-    metrics_directory = os.path.join(model_directory, f"metrics_{phase}")
+    metrics_directory_phase = os.path.join(metrics_directory, f"metrics_{phase}")
     if not os.path.exists(metrics_directory):
         os.mkdir(metrics_directory) 
+    if not os.path.exists(metrics_directory_phase):
+        os.mkdir(metrics_directory_phase) 
 
     axs[0].legend()
     axs[1].legend()
     fig.set_size_inches(18.5, 10.5)
-    plt.savefig(os.path.join(metrics_directory, "AUC_curves.png"), dpi=100)
+    plt.savefig(os.path.join(metrics_directory_phase, "AUC_curves.png"), dpi=100)
 
-    with open(os.path.join(metrics_directory, "metrics.txt"), "w+") as f:
+    with open(os.path.join(metrics_directory_phase, "metrics.txt"), "w+") as f:
         json.dump(metrics_log, f, indent=4)
 
 def load_model(model_directory, model_name, device, class_names, model_resize=-1):
@@ -96,7 +100,7 @@ def plot_precision_recall_curve(labels, prob_log, ax):
     if "No Skill" not in ax.get_legend_handles_labels()[1]:
         ax.plot([0, 1], [no_skill, no_skill], linestyle='--', label='No Skill')
     ax.set_xlim(0,1)
-    ax.set_ylim(0,1.1)
+    ax.set_ylim(0,1)
     return auc, opt_threshold
 
 def calc_shortest_distance_threshold(precision, recall, thresholds):
@@ -127,8 +131,8 @@ def plot_confusion_matrix(labels, predictions, ax, x_label, y_label):
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
 
-def load_test_metrics(model_directory):
-    with open(os.path.join(model_directory, "metrics_test", "metrics.txt"), "r") as f:
+def load_metrics(model_directory, phase):
+    with open(os.path.join(model_directory, f"metrics_{phase}", "metrics.txt"), "r") as f:
         model_metrics = json.load(f)
     model_metrics = {key: np.array(value) for key, value in model_metrics.items()}
     return model_metrics
@@ -168,6 +172,21 @@ def inter_model_matrix_comparision(eval_dir, image_dir, labels, pred_ViT, pred_B
     plt.yticks([0.5,1.5,2.5,3.5],["Both Correct","Only ViT Correct","Only BiT Correct","Both Wrong"], rotation=0)
     plt.show()
 
+def evaluate_ViT_BiT_ensemble_model(model_dir_ViT, model_dir_BiT, datasets):
+    threshold_ViT = get_threshold_from_val_metrics(model_dir_ViT)
+    threshold_BiT = get_threshold_from_val_metrics(model_dir_BiT)
+
+    for phase in ["val", "test"]:
+        metrics_ViT = load_metrics(model_dir_ViT, phase)
+        metrics_BiT = load_metrics(model_dir_BiT, phase)
+        labels = datasets[phase].get_labels()
+
+        metrics_ViT["prob_log"] = metrics_ViT["prob_log"] * (0.5/threshold_ViT)
+        metrics_BiT["prob_log"] = metrics_BiT["prob_log"] * (0.5/threshold_BiT)
+        
+        prob_log = (metrics_BiT["prob_log"] + metrics_ViT["prob_log"])/2
+        evaluate_prob_outputs(prob_log, labels, r"runs\Ensemble", phase)
+
 
 if __name__ == "__main__":
     # Load datasets split into train, val and test
@@ -186,20 +205,13 @@ if __name__ == "__main__":
     # Save metrics for model
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # model = load_model(model_directory, model_name, device, class_names, 384)
-    # phase = "val"
-    # dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
-    # labels = datasets[phase].get_labels()
-    # evaluate_models(model, device, dataloader, labels, model_directory, phase)
-    phase = "test"
-    # dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=batch_size, shuffle=False, num_workers=4) 
-    labels = datasets[phase].get_labels()
-    # evaluate_models(model, device, dataloader, labels, model_directory, "test")
+    # evaluate_model(model, model_directory, datasets, "val")
+    # evaluate_model(model, model_directory, datasets, "test")
 
     # Load metrics from model
     labels = datasets["test"].get_labels()
-    metrics_ViT = load_test_metrics(r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01")
-    metrics_BiT = load_test_metrics(r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01")
-    model_directory = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+    metrics_ViT = load_metrics(r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01", "test")
+    metrics_BiT = load_metrics(r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01", "test")
 
     # Plot confusion matrices
     # fig, axes = plt.subplots(1, 3)
@@ -209,6 +221,11 @@ if __name__ == "__main__":
     # plt.show()
 
     # Funky comparison matrix thing
-    eval_dir = r"C:\Users\rmhisje\Documents\medical_ViT\eval_data"
-    image_dir = r"C:\Users\rmhisje\Documents\medical_ViT\diabetic-retinopathy-detection\preprocessed_448"
-    inter_model_matrix_comparision(eval_dir, image_dir, labels, metrics_ViT["pred_log"], metrics_BiT["pred_log"], datasets["test"].labels_df)
+    # eval_dir = r"C:\Users\rmhisje\Documents\medical_ViT\eval_data"
+    # image_dir = r"C:\Users\rmhisje\Documents\medical_ViT\diabetic-retinopathy-detection\preprocessed_448"
+    # inter_model_matrix_comparision(eval_dir, image_dir, labels, metrics_ViT["pred_log"], metrics_BiT["pred_log"], datasets["test"].labels_df)
+
+    # Ensemble model
+    model_dir_ViT = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
+    model_dir_BiT = r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01"
+    evaluate_ViT_BiT_ensemble_model(model_dir_ViT, model_dir_BiT, datasets)
