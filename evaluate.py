@@ -24,7 +24,7 @@ def evaluate_model(model, device, model_directory, datasets, phase):
     evaluate_prob_outputs(prob_log, labels, model_directory, phase)
 
 def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
-    fig, axs = plt.subplots(1, 2)
+    fig, axs = plt.subplots(1, 2, aspect='equal')
     metrics_log = {}
 
     auc, threshold = plot_precision_recall_curve(labels, prob_log, axs[0])
@@ -43,8 +43,8 @@ def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
     metrics_log["false_positive_rate"] = calc_false_positive_rate(labels, pred_log)
 
 
-    axs[0].scatter(metrics_log["recall_score"], metrics_log["precision_score"], marker='o', color='black', label='Proposed Threshold')
-    axs[1].scatter(metrics_log["false_positive_rate"], metrics_log["recall_score"], marker='o', color='black', label='Proposed Threshold')
+    axs[0].scatter(metrics_log["recall_score"], metrics_log["precision_score"], marker='x', color='black', label='Proposed Threshold')
+    axs[1].scatter(metrics_log["false_positive_rate"], metrics_log["recall_score"], marker='x', color='black', label='Proposed Threshold')
 
     metrics_directory_phase = os.path.join(metrics_directory, f"metrics_{phase}")
     if not os.path.exists(metrics_directory):
@@ -214,7 +214,7 @@ def calc_false_positive_rate(labels, predictions):
     return num_false_positives/num_negatives
 
 def plot_AUC_curves(labels, metrics_list, model_names):
-    fig, axes = plt.subplots(1,2)
+    fig, axes = plt.subplots(1, 2, aspect='equal')
     for metrics, model_name in zip(metrics_list, model_names):
         # Plot precision recall
         plot_precision_recall_curve(labels, metrics["prob_log"], axes[0], model_name)
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     evaluate_ViT_BiT_ensemble_model(model_dir_ViT, model_dir_BiT, ensemble_dir, datasets) 
     metrics_ensemble = load_metrics(ensemble_dir, "test")
     # Plot confusion matrices
-    # fig, axes = plt.subplots(1, 3)
+    # fig, axes = plt.subplots(1, 3, aspect='equal')
     # plot_confusion_matrix(labels, metrics_BiT["pred_log"], axes[0], "BiT prediction", "eyePACs label")
     # plot_confusion_matrix(labels, metrics_ViT["pred_log"], axes[1], "ViT prediction", "eyePACs label")
     # plot_confusion_matrix(labels, metrics_ensemble["pred_log"], axes[2], "Ensemble prediction", "eyePACs label")
@@ -289,4 +289,4 @@ if __name__ == "__main__":
     # from sklearn.metrics import cohen_kappa_score 
     # print(cohen_kappa_score(metrics_ViT["pred_log"], metrics_BiT["pred_log"])
 
-    plot_AUC_curves(labels, [metrics_ViT, metrics_BiT, metrics_ensemble], ["ViT", "BiT", "Ensemble"])
+    # plot_AUC_curves(labels, [metrics_ViT, metrics_BiT, metrics_ensemble], ["ViT", "BiT", "Ensemble"])
