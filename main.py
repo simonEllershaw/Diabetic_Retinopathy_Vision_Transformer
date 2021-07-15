@@ -116,5 +116,5 @@ if __name__ == "__main__":
 
     writer.close()
 
-    evaluate.evaluate_model(model, model_directory, datasets, "val")
-    evaluate.evaluate_model(model, model_directory, datasets, "test")
+    evaluate.evaluate_model(model, device, model_directory, datasets, "val")
+    evaluate.evaluate_model(model, device, model_directory, datasets, "test")
