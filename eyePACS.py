@@ -20,10 +20,10 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, labels=None, max_length=None, random_state=None, img_size=384, remove_ungradables=True):
+    def __init__(self, data_directory, labels=None, max_length=None, random_state=None, img_size=384, remove_ungradables=True, labels_to_binary=True):
         # Load and extract config variables
         self.data_directory = data_directory
-        self.labels_df = labels if labels is not None else self.load_labels(random_state, max_length, remove_ungradables)
+        self.labels_df = labels if labels is not None else self.load_labels(random_state, max_length, remove_ungradables, labels_to_binary)
         self.img_dir = os.path.join(data_directory, "train", "train")
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_448")
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
@@ -31,6 +31,7 @@ class EyePACS_Dataset(Dataset):
         self.augment = False        
         self.img_size = img_size
         self.remove_ungradables = remove_ungradables
+        self.labels_to_binary = labels_to_binary
         self.fill = 128
 
     def __len__(self):
@@ -50,7 +51,7 @@ class EyePACS_Dataset(Dataset):
         img = torchvision.transforms.Normalize(IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD)(img)
         return img, label, metadata.image
 
-    def load_labels(self, random_state=None, max_length=None, remove_ungradables=True):
+    def load_labels(self, random_state=None, max_length=None, remove_ungradables=True, labels_to_binary=True):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
         gradability_fname = os.path.join(self.data_directory, "eyepacs_gradability_grades.csv")
 
@@ -60,11 +61,10 @@ class EyePACS_Dataset(Dataset):
             labels_df = pd.merge(labels_df, gradabilty_df, how="inner", left_on=labels_df.columns[0], right_on=gradabilty_df.columns[0])
             labels_df = labels_df.drop(labels_df[labels_df["gradability"]==0].index)
             labels_df = labels_df.drop(columns=['image_name', 'gradability'])
-
+        if labels_to_binary:
+            labels_df.level = np.where(labels_df.level>1, 1, 0)
         labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
-        labels_df.level = np.where(labels_df.level>1, 1, 0)
         labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
-
         return labels_df
 
     def get_labels(self):
@@ -91,7 +91,7 @@ class EyePACS_Dataset(Dataset):
         labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
         labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
         labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset], img_size=self.img_size, remove_ungradables=self.remove_ungradables) for subset in dataset_names}
+        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset], img_size=self.img_size, remove_ungradables=self.remove_ungradables, labels_to_binary=self.labels_to_binary) for subset in dataset_names}
         return subsets
                 
 if __name__ == "__main__":
