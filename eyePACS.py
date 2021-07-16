@@ -20,19 +20,16 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, labels=None, max_length=None, random_state=None, img_size=384, remove_ungradables=True, labels_to_binary=True):
+    def __init__(self, data_directory, max_length=None, random_state=None, img_size=384, remove_ungradables=True, labels_to_binary=True):
         # Load and extract config variables
         self.data_directory = data_directory
-        self.labels_df = labels if labels is not None else self.load_labels(random_state, max_length, remove_ungradables, labels_to_binary)
+        self.labels_df = self.load_labels(random_state, max_length, remove_ungradables, labels_to_binary)
         self.img_dir = os.path.join(data_directory, "train", "train")
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_448")
         self.class_names = ["Healthy", "Refer"]#["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = img_size
-        self.remove_ungradables = remove_ungradables
-        self.labels_to_binary = labels_to_binary
-        self.fill = 128
 
     def __len__(self):
         return len(self.labels_df)
@@ -53,10 +50,9 @@ class EyePACS_Dataset(Dataset):
 
     def load_labels(self, random_state=None, max_length=None, remove_ungradables=True, labels_to_binary=True):
         label_fname = os.path.join(self.data_directory, "trainLabels.csv", "trainLabels.csv")
-        gradability_fname = os.path.join(self.data_directory, "eyepacs_gradability_grades.csv")
-
         labels_df = pd.read_csv(label_fname)
         if remove_ungradables:
+            gradability_fname = os.path.join(self.data_directory, "eyepacs_gradability_grades.csv")
             gradabilty_df = pd.read_csv(gradability_fname, delimiter = " ")
             labels_df = pd.merge(labels_df, gradabilty_df, how="inner", left_on=labels_df.columns[0], right_on=gradabilty_df.columns[0])
             labels_df = labels_df.drop(labels_df[labels_df["gradability"]==0].index)
@@ -69,10 +65,6 @@ class EyePACS_Dataset(Dataset):
 
     def get_labels(self):
         return self.labels_df.level
-
-    def preprocess_image(self, img):
-        # Crop image according to bounding box then resize imge
-        return transforms.GrahamPreprocessing(img)
     
     def augmentation(self, img):
         augment_transforms = torchvision.transforms.Compose([
@@ -83,29 +75,30 @@ class EyePACS_Dataset(Dataset):
         ])
         return augment_transforms(img)
 
+    def select_subset_of_data(self, subset_start, subset_end):
+        self.labels_df = self.labels_df.iloc[subset_start:subset_end].reset_index(drop=True)
+
     def create_train_val_test_datasets(self, proportions, dataset_names):
+        subsets = {subset: deepcopy(self) for subset in dataset_names}
+
         lengths = (proportions*len(self)).astype(int)
         split_indicies = np.cumsum(lengths)
-
-        labels_subset = {}
-        labels_subset["train"] = self.labels_df.iloc[:split_indicies[0]].reset_index(drop=True)
-        labels_subset["val"] = self.labels_df.iloc[split_indicies[0]:split_indicies[1]].reset_index(drop=True)
-        labels_subset["test"] = self.labels_df.iloc[split_indicies[1]:].reset_index(drop=True)
-        subsets = {subset: EyePACS_Dataset(self.data_directory, labels=labels_subset[subset], img_size=self.img_size, remove_ungradables=self.remove_ungradables, labels_to_binary=self.labels_to_binary) for subset in dataset_names}
+        split_indicies = np.insert(split_indicies, 0, 0)
+        for idx, subset in enumerate(subsets.values()):
+            subset.select_subset_of_data(split_indicies[idx], split_indicies[idx+1])
         return subsets
                 
 if __name__ == "__main__":
+    data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
+    print(len(data))
+    data.augment = True
+    idx = 15
     start_time = time.time()
-    data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
-    data = EyePACS_Dataset(data_directory, random_state=13, max_length=10)
-    data.preprocess_all_images()
-
-    # data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
-    # print(len(data))
-    # data.augment = True
-    # idx = 15
-    # start_time = time.time()
-    # sample = data[idx]
+    sample = data[idx]
+    fig, ax = plt.subplots()
+    visualisation.imshow(sample[0], ax)
+    plt.show()
+    
     # torch.set_printoptions(precision=10)
     # print(sample[2])
     # print(torch.mean(sample[0]), torch.std(sample[0]))
@@ -113,9 +106,3 @@ if __name__ == "__main__":
     # print(np_image.shape)
     # plt.hist(np_image)
     # plt.show()
-    # print(time.time()-start_time)
-    # print(sample[2])
-    # fig, ax = plt.subplots()
-    # visualisation.imshow(sample[0], ax)
-    # plt.show()
-    
