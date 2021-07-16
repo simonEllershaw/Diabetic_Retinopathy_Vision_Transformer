@@ -24,7 +24,7 @@ def evaluate_model(model, device, model_directory, datasets, phase):
     evaluate_prob_outputs(prob_log, labels, model_directory, phase)
 
 def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
-    fig, axs = plt.subplots(1, 2, aspect='equal')
+    fig, axs = plt.subplots(1, 2)
     metrics_log = {}
 
     auc, threshold = plot_precision_recall_curve(labels, prob_log, axs[0])
@@ -52,6 +52,8 @@ def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
     if not os.path.exists(metrics_directory_phase):
         os.mkdir(metrics_directory_phase) 
 
+    axs[0].set_box_aspect(1)
+    axs[1].set_box_aspect(1)
     axs[0].legend()
     axs[1].legend()
     fig.set_size_inches(18.5, 10.5)
@@ -214,7 +216,7 @@ def calc_false_positive_rate(labels, predictions):
     return num_false_positives/num_negatives
 
 def plot_AUC_curves(labels, metrics_list, model_names):
-    fig, axes = plt.subplots(1, 2, aspect='equal')
+    fig, axes = plt.subplots(1, 2)
     for metrics, model_name in zip(metrics_list, model_names):
         # Plot precision recall
         plot_precision_recall_curve(labels, metrics["prob_log"], axes[0], model_name)
@@ -222,6 +224,9 @@ def plot_AUC_curves(labels, metrics_list, model_names):
         # Plot ROC
         plot_ROC_curve(labels, metrics["prob_log"], axes[1])
         axes[1].scatter(metrics["false_positive_rate"], metrics["recall_score"], marker='x', color='black')
+    
+    axes[0].set_box_aspect(1)
+    axes[1].set_box_aspect(1)
     # Add legend
     handles, labels = axes[0].get_legend_handles_labels()
     plt.legend(handles, labels, bbox_to_anchor=(1.04,0.5), loc="upper left")
@@ -240,21 +245,29 @@ if __name__ == "__main__":
     phase = sys.argv[4] if len(sys.argv) > 4 else "val"
 
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=224)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     labels = datasets["test"].get_labels()
-    
-    # Save metrics for model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    ViT = load_model(model_dir_ViT, "vit_small_patch16_224_in21k", device, class_names, 384)
-    evaluate_model(ViT, device, model_directory, datasets, "val")
-    evaluate_model(ViT, device, model_directory, datasets, "test")
 
-    BiT = load_model(model_dir_BiT, "resnetv2_50x1_bitm_in21k", device, class_names)
-    evaluate_model(BiT, device, model_directory, datasets, "val")
-    evaluate_model(BiT, device, model_directory, datasets, "test")
-
+    # Save metrics for model
+    exp_dir = r"runs\224_Baseline\vit_small_patch16_224_in21k"
+    for filename in os.listdir(exp_dir):
+        print(filename)
+        model_dir_ViT = os.path.join(exp_dir, filename)
+        ViT = load_model(model_dir_ViT, "vit_small_patch16_224_in21k", device, class_names)
+        evaluate_model(ViT, device, model_dir_ViT, datasets, "val")
+        evaluate_model(ViT, device, model_dir_ViT, datasets, "test")
+    
+    exp_dir = r"runs\224_Baseline\resnetv2_50x1_bitm_in21k"
+    for filename in os.listdir(exp_dir):
+        print(filename)
+        model_dir_BiT = os.path.join(exp_dir, filename)
+        BiT = load_model(model_dir_BiT, "resnetv2_50x1_bitm_in21k", device, class_names)
+        evaluate_model(BiT, device, model_dir_BiT, datasets, "val")
+        evaluate_model(BiT, device, model_dir_BiT, datasets, "test")
+    exit()
     # Load metrics from model
     metrics_ViT = load_metrics(model_dir_ViT, "test")
     metrics_BiT = load_metrics(model_dir_BiT, "test")
@@ -263,10 +276,12 @@ if __name__ == "__main__":
     evaluate_ViT_BiT_ensemble_model(model_dir_ViT, model_dir_BiT, ensemble_dir, datasets) 
     metrics_ensemble = load_metrics(ensemble_dir, "test")
     # Plot confusion matrices
-    # fig, axes = plt.subplots(1, 3, aspect='equal')
+    # fig, axes = plt.subplots(1, 3)
     # plot_confusion_matrix(labels, metrics_BiT["pred_log"], axes[0], "BiT prediction", "eyePACs label")
     # plot_confusion_matrix(labels, metrics_ViT["pred_log"], axes[1], "ViT prediction", "eyePACs label")
     # plot_confusion_matrix(labels, metrics_ensemble["pred_log"], axes[2], "Ensemble prediction", "eyePACs label")
+    # axes[0].set_box_aspect(1)
+    # axes[1].set_box_aspect(1)
     # plt.show()
 
     # Model comparision
