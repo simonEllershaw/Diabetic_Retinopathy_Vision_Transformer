@@ -13,6 +13,7 @@ import random
 from PIL import Image
 import sys
 from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
+from copy import deepcopy
 
 # Test 
 import visualisation
