@@ -8,16 +8,17 @@ import time
 import sys
 import os 
 
-def preprocess_all_images(img_dir, img_dir_preprocessed):
+def preprocess_all_images(img_dir, img_dir_preprocessed, image_format):
     if not os.path.exists(img_dir_preprocessed):
         os.makedirs(img_dir_preprocessed)
     for fname in os.listdir(img_dir):
-        img = cv2.imread(os.path.join(img_dir, fname))
-        try:
-            img = GrahamPreprocessing(img)
-            cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
-        except:
-            print(fname)
+        if fname.endswith(image_format):
+            img = cv2.imread(os.path.join(img_dir, fname))
+            try:
+                img = GrahamPreprocessing(img)
+                cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
+            except:
+                print(fname)
         
 
 def GrahamPreprocessing(img):
@@ -89,7 +90,7 @@ def calc_cropbox_dim(img):
     # to reduce compute at cost of accuracy
     stride = 100
     img_np = np.asarray(img)[::stride,::stride].sum(2) # converting to np array slow but necessary
-    img_np = np.where(img_np>img_np.mean()/10, 1, 0)
+    img_np = np.where(img_np>img_np.mean()/5, 1, 0)
     # Find nonzero rows and columns (convert back to org indexing)
     non_zero_rows = np.nonzero(img_np.sum(1))[0]*stride
     non_zero_columns = np.nonzero(img_np.sum(0))[0]*stride
@@ -108,10 +109,17 @@ def calc_cropbox_dim(img):
 
 if __name__ == "__main__":
     start_time = time.time()
-    img_dir = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection\\train\\train"
-    img_dir_preprocessed = sys.argv[2] if len(sys.argv) > 2 else "diabetic-retinopathy-detection\\preprocessed_448"
-    preprocess_all_images(img_dir, img_dir_preprocessed)
+    img_dir = sys.argv[1] if len(sys.argv) > 1 else 'messidor'
+    img_dir_preprocessed = sys.argv[2] if len(sys.argv) > 2 else "diabetic-retinopathy-detection\\preprocessed_messidor_448\\Base12"
+    # 
     
+    for sub_dir in os.listdir(img_dir):
+        print(sub_dir)
+        if "Base" in sub_dir:
+            img_dir_preprocessed = os.path.join(img_dir, "preprocessed_448", sub_dir)
+            preprocess_all_images(os.path.join(img_dir, sub_dir), img_dir_preprocessed, ".tif")
+
+
     # fig, axes = plt.subplots(1,2)
     # start_time = time.time()
     # image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\10_left.jpeg")
