@@ -43,11 +43,6 @@ if __name__ == "__main__":
     remove_ungradables = False if (len(sys.argv) > 9 and int(sys.argv[9]) > 0) else True
     data_aug_train = False if (len(sys.argv) > 10 and int(sys.argv[10]) > 0) else True
 
-    dataset_name = "_Eyepacs_masked_"
-    model_directory = os.path.join("runs", model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
-    os.mkdir(model_directory)
-    print(model_directory)
-
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
@@ -98,6 +93,11 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss(weight=loss_weights.to(device))
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_steps, num_warm_up_steps)
+
+    dataset_name = f"_{type(data).__name__}_"
+    model_directory = os.path.join("runs", model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
+    os.mkdir(model_directory)
+    print(model_directory)
     
     # Init tensorboard
     writer = SummaryWriter(model_directory)
