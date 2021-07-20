@@ -8,4 +8,5 @@ pandas
 opencv-python
 tensorboard
 sklearn
+seaborn
 xlrd
