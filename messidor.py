@@ -51,15 +51,11 @@ class Messidor_Dataset(Dataset):
 
     def load_labels(self, random_state=None, max_length=None, labels_to_binary=True):
         labels_df = pd.DataFrame()
-        for sub_dir in os.listdir(self.data_directory):
-            if "Base" in sub_dir:
-                annotations_fname = os.path.join(self.data_directory, sub_dir, f"Annotation_{sub_dir}.xls")
-                try:
-                    base_labels_df = pd.read_excel(annotations_fname)
-                except FileNotFoundError:
-                    annotations_fname = os.path.join(self.data_directory, sub_dir, f"Annotation {sub_dir}.xls")
-                    base_labels_df = pd.read_excel(annotations_fname)
-                base_labels_df["directory"] = sub_dir
+        for fname in os.listdir(self.data_directory):
+            if fname.endswith(".xls"):
+                annotations_fname = os.path.join(self.data_directory, fname)
+                base_labels_df = pd.read_excel(annotations_fname)
+                base_labels_df["directory"] = fname[11:-4]
                 # print(base_labels_df.head())
                 labels_df = labels_df.append(base_labels_df)
         labels_df = labels_df.reset_index()
@@ -82,7 +78,6 @@ class Messidor_Dataset(Dataset):
         base_33_duplicates = ["20051202_55582_0400_PP.tif", "20051202_41076_0400_PP.tif", "20051202_48287_0400_PP.tif", "20051202_48586_0400_PP.tif", "20051202_55457_0400_PP.tif", "20051202_55626_0400_PP.tif", "20051202_54783_0400_PP.tif", "20051202_48575_0400_PP.tif", "20051205_32966_0400_PP.tif", "20051202_55484_0400_PP.tif", "20051205_32981_0400_PP.tif", "20051202_55562_0400_PP.tif", "20051202_54547_0400_PP.tif"]
         for duplicate in base_33_duplicates:
             labels_df = labels_df.drop(labels_df[(labels_df["directory"] == "Base33") & (labels_df["Image name"]==duplicate)].index)        
-
         return labels_df
 
     def get_labels(self):
@@ -119,7 +114,7 @@ if __name__ == "__main__":
     sample = data[idx]
     fig, ax = plt.subplots()
     visualisation.imshow(sample[0], ax)
-    # plt.show()
+    plt.show()
     labels_df = data.labels_df
     # torch.set_printoptions(precision=10)
     # print(sample[2])
