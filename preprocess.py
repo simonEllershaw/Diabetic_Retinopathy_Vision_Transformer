@@ -8,21 +8,30 @@ import time
 import sys
 import os 
 
-def preprocess_all_images(img_dir, img_dir_preprocessed, image_format):
+def preprocess_all_images(img_dir, img_dir_preprocessed, image_format, seg_dir=None, seg_dir_preprocessed=None, seg_format=None):
     if not os.path.exists(img_dir_preprocessed):
         os.makedirs(img_dir_preprocessed)
+
     for fname in os.listdir(img_dir):
         if fname.endswith(image_format):
             img = cv2.imread(os.path.join(img_dir, fname))
             try:
-                img = GrahamPreprocessing(img)
+                img, x_min, y_min, radius_inital = GrahamPreprocessing(img)
                 cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
             except:
                 print(fname)
-        
+        if seg_dir is not None:
+            if not os.path.exists(seg_dir_preprocessed):
+                os.makedirs(seg_dir_preprocessed)
+            fname = fname[:-3] + seg_format
+            seg = cv2.imread(os.path.join(seg_dir, fname))
+            seg, _, _, _ = GrahamPreprocessing(seg, x_min, y_min, radius_inital)
+            cv2.imwrite(os.path.join(seg_dir_preprocessed, fname), seg)
 
-def GrahamPreprocessing(img):
-    x_min, y_min, radius_inital = calc_cropbox_dim(img)
+
+def GrahamPreprocessing(img, x_min=None, y_min=None, radius_inital=None):
+    if x_min is None:
+        x_min, y_min, radius_inital = calc_cropbox_dim(img)
 
     if radius_inital < 10:
         raise ValueError("Image radius could not be found")
@@ -34,7 +43,7 @@ def GrahamPreprocessing(img):
     # img = subtract_average_local_colour(img)
     # img = threshold_boundary(img, round(radius_scaled*0.9))
     img = cv2.resize(img, [448,448])
-    return img
+    return img, x_min, y_min, radius_inital
 
 def estimate_radius(image):
     # Take central row and sum accross channels
@@ -107,17 +116,20 @@ def calc_cropbox_dim(img):
     top_left_coord = ((center - radius)).astype(int)
     return top_left_coord[0], top_left_coord[1], round(radius)
 
-if __name__ == "__main__":
-    start_time = time.time()
-    img_dir = sys.argv[1] if len(sys.argv) > 1 else 'messidor'
-    img_dir_preprocessed = sys.argv[2] if len(sys.argv) > 2 else "diabetic-retinopathy-detection\\preprocessed_messidor_448\\Base12"
-    # 
-    
-    for sub_dir in os.listdir(img_dir):
-        print(sub_dir)
-        if "Base" in sub_dir:
-            img_dir_preprocessed = os.path.join(img_dir, "preprocessed_448", sub_dir)
-            preprocess_all_images(os.path.join(img_dir, sub_dir), img_dir_preprocessed, ".tif")
+if __name__ == "__main__":    
+    # for sub_dir in os.listdir(img_dir):
+    #     print(sub_dir)
+    #     if "Base" in sub_dir:
+    #         img_dir_preprocessed = os.path.join(img_dir, "preprocessed_448", sub_dir)
+    #         preprocess_all_images(os.path.join(img_dir, sub_dir), img_dir_preprocessed, ".tif")
+
+    data_directory = r'data\idrid'
+    img_dir = os.path.join(data_directory, "Images")
+    seg_dir = os.path.join(data_directory, "Segmentation", "4. Mask")
+    img_preprocessed_dir = os.path.join(data_directory, "Images_Preprocessed")
+    seg_preprocessed_dir = os.path.join(data_directory, "Segmentation_Preprocessed")
+
+    preprocess_all_images(img_dir, img_preprocessed_dir, "jpg", seg_dir=seg_dir, seg_dir_preprocessed=seg_preprocessed_dir, seg_format="tif")
 
     # fig, axes = plt.subplots(1,2)
     # start_time = time.time()
