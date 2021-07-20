@@ -119,7 +119,6 @@ if __name__ == "__main__":
             img_dir_preprocessed = os.path.join(img_dir, "preprocessed_448", sub_dir)
             preprocess_all_images(os.path.join(img_dir, sub_dir), img_dir_preprocessed, ".tif")
 
-
     # fig, axes = plt.subplots(1,2)
     # start_time = time.time()
     # image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\10_left.jpeg")
