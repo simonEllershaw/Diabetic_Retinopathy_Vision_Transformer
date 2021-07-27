@@ -10,3 +10,6 @@ tensorboard
 sklearn
 seaborn
 xlrd
+grad-cam
+ttach
+tqdm
