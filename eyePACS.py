@@ -6,9 +6,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 import torchvision
-import transforms
 import cv2
-from transforms import GrahamPreprocessing
 import random
 from PIL import Image
 import sys
@@ -71,8 +69,10 @@ class EyePACS_Dataset(Dataset):
         augment_transforms = torchvision.transforms.Compose([
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            # torchvision.transforms.RandomAffine(degrees=10, fill=self.fill),#, translate=(0.1,0.1), scale=(0.75,1.25), fill=self.fill),
-            torchvision.transforms.ColorJitter(brightness=0.3, contrast=0.2),
+            torchvision.transforms.RandomAffine(degrees=180, translate=(0.1,0.1), scale=(0.75,1.25), fill=0),
+            torchvision.transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+            torchvision.transforms.GaussianBlur(5),
+            torchvision.transforms.RandomPerspective()            
         ])
         return augment_transforms(img)
 
@@ -90,7 +90,7 @@ class EyePACS_Dataset(Dataset):
         return subsets
                 
 if __name__ == "__main__":
-    data = EyePACS_Dataset("diabetic-retinopathy-detection", random_state=13)
+    data = EyePACS_Dataset("data/eyePACs", random_state=13)
     print(len(data))
     data.augment = True
     idx = 15
