@@ -8,7 +8,7 @@ import seaborn as sns
 
 def resize_ViT(model, new_input_size):
     new_patch_embed = timm.models.layers.patch_embed.PatchEmbed(img_size=384)
-    new_patch_embed.proj =  copy.deepcopy(model.patch_embed.proj)
+    new_patch_embed.proj = copy.deepcopy(model.patch_embed.proj)
     model.patch_embed = new_patch_embed
 
     num_patches = model.patch_embed.num_patches
@@ -74,10 +74,20 @@ def visualise_postional_embeddings(cos_sim):
 
 if __name__ == "__main__":
     inp = torch.ones((3, 3, 384, 384))*0.5
-    model = timm.create_model("vit_small_patch16_224_in21k", num_classes=2)
-    model = resize_ViT(model, 384)
-    model.load_state_dict(torch.load(r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01\model_params.pt"))
-    cos_sim = calc_pos_embed_similarites(model.pos_embed, stride=2)
-    visualise_postional_embeddings(cos_sim)
+    model = timm.create_model("vit_small_patch16_224_in21k", pretrained=True, num_classes=2)
+    # model = resize_ViT(model, 384)
+    # model.load_state_dict(torch.load(r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01\model_params.pt"))
+    
+    # cos_sim = calc_pos_embed_similarites(model.pos_embed, stride=2)
+    # visualise_postional_embeddings(cos_sim)
 
     # print(model.pos_embed.size())
+
+    weights = model.patch_embed.proj.weight
+    print(weights.size())
+    idx = 0
+    test = weights[idx].detach().numpy().transpose(1, 2, 0)/torch.max(weights[idx]).item()
+    print(torch.max(test))
+    print(test.shape)
+    plt.imshow(test)
+    plt.show()
