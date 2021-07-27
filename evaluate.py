@@ -62,12 +62,13 @@ def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
     with open(os.path.join(metrics_directory_phase, "metrics.txt"), "w+") as f:
         json.dump(metrics_log, f, indent=4)
 
-def load_model(model_directory, model_name, device, class_names, model_resize=-1):
-    model_fname = os.path.join(model_directory, "model_params.pt")
+def load_model(model_name, device, class_names, model_directory=None, model_resize=-1):
     model = timm.create_model(model_name, num_classes=len(class_names))
     if model_resize > 0:
         model = resize_ViT(model, model_resize)
-    model.load_state_dict(torch.load(model_fname))
+    if model_directory is not None: 
+        model_fname = os.path.join(model_directory, "model_params.pt")
+        model.load_state_dict(torch.load(model_fname))
     model = model.eval().to(device)
     return model
 
@@ -256,7 +257,7 @@ if __name__ == "__main__":
     for filename in os.listdir(exp_dir):
         print(filename)
         model_dir_ViT = os.path.join(exp_dir, filename)
-        ViT = load_model(model_dir_ViT, "vit_small_patch16_224_in21k", device, class_names)
+        # ViT = load_model(model_dir_ViT, "vit_small_patch16_224_in21k", device, class_names)
         evaluate_model(ViT, device, model_dir_ViT, datasets, "val")
         evaluate_model(ViT, device, model_dir_ViT, datasets, "test")
     
@@ -264,7 +265,7 @@ if __name__ == "__main__":
     for filename in os.listdir(exp_dir):
         print(filename)
         model_dir_BiT = os.path.join(exp_dir, filename)
-        BiT = load_model(model_dir_BiT, "resnetv2_50x1_bitm_in21k", device, class_names)
+        # BiT = load_model(model_dir_BiT, "resnetv2_50x1_bitm_in21k", device, class_names)
         evaluate_model(BiT, device, model_dir_BiT, datasets, "val")
         evaluate_model(BiT, device, model_dir_BiT, datasets, "test")
     exit()
