@@ -21,8 +21,9 @@ from eyePACS import EyePACS_Dataset
 import sklearn.utils
 import evaluate
 from vision_transformer_utils import resize_ViT
-from colouredSquares import Coloured_Squares_Dataset
+# from colouredSquares import Coloured_Squares_Dataset
 from eyePACS_masked import EyePACS_Masked_Dataset
+from messidor import Messidor_Dataset
 # Testing
 import numpy as np
 from torchvision import transforms, datasets
@@ -47,7 +48,8 @@ if __name__ == "__main__":
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     np.random.seed(13)
-    full_dataset = EyePACS_Masked_Dataset(data_directory, img_size=224, mask_size=4, max_length=3000, random_state=13)
+    # full_dataset = EyePACS_Masked_Dataset(data_directory, img_size=224, mask_size=4, random_state=13)
+    full_dataset =  Messidor_Dataset(data_directory, random_state=13, img_size=img_size)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=data_aug_train
@@ -79,9 +81,9 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
-    # if resize_model:
-    #     print("model resize")
-    #     model = resize_ViT(model, img_size)
+    if resize_model:
+        print("model resize")
+        model = resize_ViT(model, img_size)
 
     num_batches_per_train_epoch = len(datasets["train"]) / batch_size
     num_epochs = int(num_steps//num_batches_per_train_epoch)
@@ -94,7 +96,7 @@ if __name__ == "__main__":
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     scheduler = LRSchedules.WarmupCosineSchedule(optimizer, num_steps, num_warm_up_steps)
 
-    dataset_name = f"_{type(data).__name__}_"
+    dataset_name = f"_{type(full_dataset).__name__}_"
     model_directory = os.path.join("runs", model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
     os.mkdir(model_directory)
     print(model_directory)
