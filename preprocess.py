@@ -15,35 +15,32 @@ def preprocess_all_images(img_dir, img_dir_preprocessed, image_format, seg_dir=N
     for fname in os.listdir(img_dir):
         if fname.endswith(image_format):
             img = cv2.imread(os.path.join(img_dir, fname))
-            try:
-                img, x_min, y_min, radius_inital = GrahamPreprocessing(img)
-                cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
-            except:
-                print(fname)
-        if seg_dir is not None:
-            if not os.path.exists(seg_dir_preprocessed):
-                os.makedirs(seg_dir_preprocessed)
-            fname = fname[:-3] + seg_format
-            seg = cv2.imread(os.path.join(seg_dir, fname))
-            seg, _, _, _ = GrahamPreprocessing(seg, x_min, y_min, radius_inital)
-            cv2.imwrite(os.path.join(seg_dir_preprocessed, fname), seg)
+            img, x_min, y_min, radius_inital = GrahamPreprocessing(img)
+            cv2.imwrite(os.path.join(img_dir_preprocessed, fname), img)
+            if seg_dir is not None:
+                if not os.path.exists(seg_dir_preprocessed):
+                    os.makedirs(seg_dir_preprocessed)
+                fname = fname[:-3] + seg_format
+                seg = cv2.imread(os.path.join(seg_dir, fname))
+                seg, _, _, _ = GrahamPreprocessing(seg, x_min, y_min, radius_inital)
+                cv2.imwrite(os.path.join(seg_dir_preprocessed, fname), seg)
 
 
-def GrahamPreprocessing(img, x_min=None, y_min=None, radius_inital=None):
-    if x_min is None:
-        x_min, y_min, radius_inital = calc_cropbox_dim(img)
+def GrahamPreprocessing(img, x_min_no_pad=None, y_min_no_pad=None, radius_inital=None):
+    if x_min_no_pad is None:
+        x_min_no_pad, y_min_no_pad, radius_inital = calc_cropbox_dim(img)
 
     if radius_inital < 10:
         raise ValueError("Image radius could not be found")
 
-    img, x_min, y_min = pad_image(img, x_min, y_min)
+    img, x_min, y_min = pad_image(img, x_min_no_pad, y_min_no_pad)
     img = img[y_min:y_min+radius_inital*2, x_min:x_min+radius_inital*2]
     radius_scaled = 500       
     img = rescale_image(img, radius_inital, radius_scaled)
     # img = subtract_average_local_colour(img)
     # img = threshold_boundary(img, round(radius_scaled*0.9))
     img = cv2.resize(img, [448,448])
-    return img, x_min, y_min, radius_inital
+    return img, x_min_no_pad, y_min_no_pad, radius_inital
 
 def estimate_radius(image):
     # Take central row and sum accross channels
