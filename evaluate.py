@@ -4,6 +4,8 @@ import torch
 import timm
 import numpy as np
 from eyePACS import EyePACS_Dataset
+from messidor import Messidor_Dataset
+
 import matplotlib.pyplot as plt
 import sklearn.metrics
 import os
@@ -175,17 +177,17 @@ def inter_model_matrix_comparision(labels, pred_ViT, pred_BiT, x_label, y_ticks)
     # Funky confusion matrix thing
     matrix = np.zeros((4, len(np.unique(labels))))
     for label, ViT_predict, BiT_predict in zip(labels, pred_ViT, pred_BiT):
-        # label_masked = 1 if label > 1 else 0
-        if ViT_predict==BiT_predict and ViT_predict==label:
+        label_masked = 1 if label > 1 else 0
+        if ViT_predict==BiT_predict and ViT_predict==label_masked:
             row = 0
-        elif ViT_predict!=BiT_predict and ViT_predict==label:
+        elif ViT_predict!=BiT_predict and ViT_predict==label_masked:
             row = 1
-        elif ViT_predict!=BiT_predict and BiT_predict==label:
+        elif ViT_predict!=BiT_predict and BiT_predict==label_masked:
             row = 2
-        elif ViT_predict==BiT_predict and BiT_predict!=label:
+        elif ViT_predict==BiT_predict and BiT_predict!=label_masked:
             row = 3
         else:
-            print(label, ViT_predict, BiT_predict)
+            print(label_masked, ViT_predict, BiT_predict)
         matrix[row, label] += 1
     matrix = matrix / matrix.sum(axis=0)
     sn.heatmap(matrix, annot=True, fmt=".2f", square=True, cbar=None, cmap="Blues")
@@ -234,48 +236,47 @@ def plot_AUC_curves(labels, metrics_list, model_names):
     plt.show()
 
 if __name__ == "__main__":
-    model_dir_ViT = r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
-    model_dir_BiT = r"runs\384_Run_Baseline\resnetv2_50x1_bitm_in21k_eyePACS_LR_0.01"
+    model_dir_ViT = r"runs\384_Strong_Aug\vit_small_patch16_224_in21k\LR_0.01"
+    model_dir_BiT = r"runs\384_Strong_Aug\resnetv2_50x1_bitm_in21k\LR_0.01"
     ensemble_dir = r'runs\ensemble'
-
+    
     # Load datasets split into train, val and test
     print(sys.argv)
-    data_directory = sys.argv[1] if len(sys.argv) > 1 else "diabetic-retinopathy-detection"
+    data_directory = sys.argv[1] if len(sys.argv) > 1 else "data/eyePACs"
     model_directory = sys.argv[2] if len(sys.argv) > 2 else r"runs\384_Run_Baseline\vit_small_patch16_224_in21k_eyePACS_LR_0.01"
     model_name = sys.argv[3] if len(sys.argv) > 3 else "vit_small_patch16_224_in21k"#"resnetv2_50x1_bitm_in21k" vit_small_patch16_224_in21k
     phase = sys.argv[4] if len(sys.argv) > 4 else "val"
 
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=224)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384, labels_to_binary=False)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     labels = datasets["test"].get_labels()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    # full_dataset = Messidor_Dataset("data/messidor")
+    # class_names = full_dataset.class_names
+    # datasets = {}
+    # datasets["test"] = full_dataset
+    # labels = datasets["test"].get_labels()
+
     # Save metrics for model
-    exp_dir = r"runs\224_Baseline\vit_small_patch16_224_in21k"
-    for filename in os.listdir(exp_dir):
-        print(filename)
-        model_dir_ViT = os.path.join(exp_dir, filename)
-        # ViT = load_model(model_dir_ViT, "vit_small_patch16_224_in21k", device, class_names)
-        evaluate_model(ViT, device, model_dir_ViT, datasets, "val")
-        evaluate_model(ViT, device, model_dir_ViT, datasets, "test")
-    
-    exp_dir = r"runs\224_Baseline\resnetv2_50x1_bitm_in21k"
-    for filename in os.listdir(exp_dir):
-        print(filename)
-        model_dir_BiT = os.path.join(exp_dir, filename)
-        # BiT = load_model(model_dir_BiT, "resnetv2_50x1_bitm_in21k", device, class_names)
-        evaluate_model(BiT, device, model_dir_BiT, datasets, "val")
-        evaluate_model(BiT, device, model_dir_BiT, datasets, "test")
-    exit()
+    ViT = load_model("vit_small_patch16_224_in21k", device, class_names, model_dir_ViT)
+    # evaluate_model(ViT, device, model_dir_ViT, datasets, "val")
+    # evaluate_model(ViT, device, model_dir_ViT, datasets, "test")
+
+    BiT = load_model("resnetv2_50x1_bitm_in21k", device, class_names, model_dir_BiT)
+    # evaluate_model(BiT, device, model_dir_BiT, datasets, "val")
+    # evaluate_model(BiT, device, model_dir_BiT, datasets, "test")
+
     # Load metrics from model
     metrics_ViT = load_metrics(model_dir_ViT, "test")
     metrics_BiT = load_metrics(model_dir_BiT, "test")
 
     # Ensemble model
-    evaluate_ViT_BiT_ensemble_model(model_dir_ViT, model_dir_BiT, ensemble_dir, datasets) 
+    # evaluate_ViT_BiT_ensemble_model(model_dir_ViT, model_dir_BiT, ensemble_dir, datasets) 
     metrics_ensemble = load_metrics(ensemble_dir, "test")
+    
     # Plot confusion matrices
     # fig, axes = plt.subplots(1, 3)
     # plot_confusion_matrix(labels, metrics_BiT["pred_log"], axes[0], "BiT prediction", "eyePACs label")
@@ -287,10 +288,9 @@ if __name__ == "__main__":
 
     # Model comparision
     # Compare ViT and BiT predictions to ground truth
-    # inter_model_matrix_comparision(labels, metrics_ViT["pred_log"], metrics_BiT["pred_log"], "Labels", ["Both Correct","Only ViT Correct","Only BiT Correct","Both Wrong"])
+    inter_model_matrix_comparision(labels, metrics_ViT["pred_log"], metrics_BiT["pred_log"], "Labels", ["Both Correct","Only ViT Correct","Only BiT Correct","Both Wrong"])
     # Quantiy which model ensemble predictions 'came from'
     # inter_model_matrix_comparision(metrics_ensemble["pred_log"], metrics_ViT["pred_log"], metrics_BiT["pred_log"], "Ensemble Prediction", ["ViT+BiT Agree","Choose ViT","Choose BiT","Choose Opposite"])
-    # 
 
     # dataset_proportions = np.array([0.6, 0.2, 0.2])
     # full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384, labels_to_binary=False)
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     # generate_folders_of_disagreements(eval_dir, image_dir, labels, metrics_ViT["pred_log"], metrics_BiT["pred_log"], datasets["train"].labels_df)
 
     # Kappa agreement
-    # from sklearn.metrics import cohen_kappa_score 
-    # print(cohen_kappa_score(metrics_ViT["pred_log"], metrics_BiT["pred_log"])
+    from sklearn.metrics import cohen_kappa_score 
+    # print(cohen_kappa_score(metrics_ViT["pred_log"], metrics_BiT["pred_log"]))
 
     # plot_AUC_curves(labels, [metrics_ViT, metrics_BiT, metrics_ensemble], ["ViT", "BiT", "Ensemble"])
