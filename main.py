@@ -40,19 +40,23 @@ if __name__ == "__main__":
     num_warm_up_steps = int(sys.argv[5]) if len(sys.argv) > 5 else 100
     img_size = int(sys.argv[6]) if len(sys.argv) > 6 else 224
     resize_model = True if (len(sys.argv) > 7 and int(sys.argv[7]) > 0) else False
-    mini_batching_turn_off = True if (len(sys.argv) > 8 and int(sys.argv[8]) > 0) else False
-    remove_ungradables = False if (len(sys.argv) > 9 and int(sys.argv[9]) > 0) else True
+    proportions = float(sys.argv[8]) if (len(sys.argv) > 8) else 1
+    # mini_batching_turn_off = True if (len(sys.argv) > 8 and int(sys.argv[8]) > 0) else False
+    # remove_ungradables = False if (len(sys.argv) > 9 and int(sys.argv[9]) > 0) else True
     data_aug_train = False if (len(sys.argv) > 10 and int(sys.argv[10]) > 0) else True
 
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     np.random.seed(13)
-    # full_dataset = EyePACS_Masked_Dataset(data_directory, img_size=224, mask_size=4, random_state=13)
-    full_dataset =  Messidor_Dataset(data_directory, random_state=13, img_size=img_size)
+    full_dataset = EyePACS_Dataset(data_directory, img_size=img_size, random_state=13)
+    # full_dataset =  Messidor_Dataset(data_directory, random_state=13, img_size=img_size)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
     datasets["train"].augment=data_aug_train
+    if proportions < 1:
+        datasets["train"].select_subset_of_data(0, int(len(datasets["train"])*proportions))
+        datasets["val"].select_subset_of_data(0, int(len(datasets["val"])*proportions))
 
     # Setup dataloaders
     batch_size = 512
@@ -80,16 +84,25 @@ if __name__ == "__main__":
     loss_weights = torch.tensor(loss_weights).float()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
-    if resize_model:
-        print("model resize")
-        model = resize_ViT(model, img_size)
+    
+    if "dino" in model_name:
+        model = torch.hub.load('facebookresearch/dino:main', model_name)    
+        if "resnet" in model_name:
+            model = torch.nn.Sequential(model, torch.nn.Linear(2048, 2))
+        else:
+            model = torch.nn.Sequential(model, torch.nn.Linear(model.num_features, 2))
+    else:
+        model = timm.create_model(model_name, pretrained=True, num_classes=len(class_names)).to(device)
+        if resize_model:
+            print("model resize")
+            model = resize_ViT(model, img_size)
+    model = model.to(device)    
 
     num_batches_per_train_epoch = len(datasets["train"]) / batch_size
     num_epochs = int(num_steps//num_batches_per_train_epoch)
     print(num_epochs)
     warmup_steps = int(num_warm_up_steps//num_batches_per_train_epoch)
-    num_epochs_to_converge = 100
+    num_epochs_to_converge = 50
     grad_clip_norm = 1
 
     criterion = nn.CrossEntropyLoss(weight=loss_weights.to(device))
