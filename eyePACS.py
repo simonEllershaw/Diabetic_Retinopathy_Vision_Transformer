@@ -10,7 +10,7 @@ import cv2
 import random
 from PIL import Image
 import sys
-from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
+from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from copy import deepcopy
 
 # Test 
@@ -44,7 +44,7 @@ class EyePACS_Dataset(Dataset):
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
-        img = torchvision.transforms.Normalize(IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD)(img)
+        img = torchvision.transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None, max_length=None, remove_ungradables=True, labels_to_binary=True):
