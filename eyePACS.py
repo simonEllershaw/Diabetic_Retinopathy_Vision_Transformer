@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import time
 
 class EyePACS_Dataset(Dataset):
-    def __init__(self, data_directory, max_length=None, random_state=None, img_size=384, remove_ungradables=True, labels_to_binary=True):
+    def __init__(self, data_directory, max_length=None, random_state=None, img_size=384, remove_ungradables=True, labels_to_binary=True, use_inception_norm=True):
         # Load and extract config variables
         self.data_directory = data_directory
         self.labels_df = self.load_labels(random_state, max_length, remove_ungradables, labels_to_binary)
@@ -29,6 +29,9 @@ class EyePACS_Dataset(Dataset):
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = img_size
+        self.std = IMAGENET_INCEPTION_STD if use_inception_norm else IMAGENET_DEFAULT_STD
+        self.mean = IMAGENET_INCEPTION_MEAN if use_inception_norm else IMAGENET_DEFAULT_MEAN
+
 
     def __len__(self):
         return len(self.labels_df)
@@ -44,7 +47,7 @@ class EyePACS_Dataset(Dataset):
         if self.augment:
             img = self.augmentation(img)
         img = torchvision.transforms.ToTensor()(img)
-        img = torchvision.transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)(img)
+        img = torchvision.transforms.Normalize(self.mean, self.std)(img)
         return img, label, metadata.image
 
     def load_labels(self, random_state=None, max_length=None, remove_ungradables=True, labels_to_binary=True):

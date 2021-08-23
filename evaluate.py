@@ -248,7 +248,7 @@ if __name__ == "__main__":
     phase = sys.argv[4] if len(sys.argv) > 4 else "val"
 
     dataset_proportions = np.array([0.6, 0.2, 0.2])
-    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384, labels_to_binary=False)
+    full_dataset = EyePACS_Dataset(data_directory, random_state=13, img_size=384)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, ["train", "val", "test"])
     labels = datasets["test"].get_labels()
@@ -261,10 +261,16 @@ if __name__ == "__main__":
     # labels = datasets["test"].get_labels()
 
     # Save metrics for model
-    ViT = load_model("vit_small_patch16_224_in21k", device, class_names, model_dir_ViT)
-    # evaluate_model(ViT, device, model_dir_ViT, datasets, "val")
-    # evaluate_model(ViT, device, model_dir_ViT, datasets, "test")
-
+    model_dir_ViT = r'runs/dino_vits16_EyePACS_Dataset_07_30_19_06_33'
+    # ViT = load_model("vit_small_patch16_224_in21k", device, class_names, model_dir_ViT)
+    ViT = torch.hub.load('facebookresearch/dino:main', 'dino_vits16')    
+    ViT = torch.nn.Sequential(ViT, torch.nn.Linear(ViT.num_features, 2))
+    ViT.load_state_dict(torch.load(r'runs/dino_vits16_EyePACS_Dataset_07_31_04_53_12/model_params.pt'))
+    ViT = ViT.to(device)
+    # ViT = load_model("vit_small_patch16_224_in21k", device, class_names, model_dir_ViT)
+    evaluate_model(ViT, device, model_dir_ViT, datasets, "val")
+    evaluate_model(ViT, device, model_dir_ViT, datasets, "test")
+    exit()
     BiT = load_model("resnetv2_50x1_bitm_in21k", device, class_names, model_dir_BiT)
     # evaluate_model(BiT, device, model_dir_BiT, datasets, "val")
     # evaluate_model(BiT, device, model_dir_BiT, datasets, "test")
