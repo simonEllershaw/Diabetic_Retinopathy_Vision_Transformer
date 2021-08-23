@@ -24,7 +24,8 @@ if __name__ == "__main__":
         model = evaluate.load_model(model_name, device, ["A", "B"])
 
     dummy_input = torch.randn(batch_size, 3, img_size, img_size, dtype=torch.float).to(device)
-    repetitions=100
+    dummy_label = torch.randint(1, (batch_size, 3, img_size, img_size))
+    repetitions=1000
     time_log = np.zeros(repetitions)
     with torch.no_grad():
         for rep in range(repetitions):

@@ -41,15 +41,16 @@ if __name__ == "__main__":
     img_size = int(sys.argv[6]) if len(sys.argv) > 6 else 224
     resize_model = True if (len(sys.argv) > 7 and int(sys.argv[7]) > 0) else False
     proportions = float(sys.argv[8]) if (len(sys.argv) > 8) else 1
-    # mini_batching_turn_off = True if (len(sys.argv) > 8 and int(sys.argv[8]) > 0) else False
-    # remove_ungradables = False if (len(sys.argv) > 9 and int(sys.argv[9]) > 0) else True
-    data_aug_train = False if (len(sys.argv) > 10 and int(sys.argv[10]) > 0) else True
+    use_inception_norm = False if (len(sys.argv) > 9 and int(sys.argv[9]) > 0) else True
+    mini_batching_turn_off = False #if (len(sys.argv) > 8 and int(sys.argv[8]) > 0) else False
+    remove_ungradables = True #if (len(sys.argv) > 9 and int(sys.argv[9]) > 0) else True
+    data_aug_train = True #if (len(sys.argv) > 10 and int(sys.argv[10]) > 0) else True
 
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
     dataset_proportions = np.array([0.6, 0.2, 0.2])
     np.random.seed(13)
-    full_dataset = EyePACS_Dataset(data_directory, img_size=img_size, random_state=13)
+    full_dataset = EyePACS_Dataset(data_directory, img_size=img_size, random_state=13, use_inception_norm=use_inception_norm)
     # full_dataset =  Messidor_Dataset(data_directory, random_state=13, img_size=img_size)
     class_names = full_dataset.class_names
     datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
