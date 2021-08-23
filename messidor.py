@@ -61,7 +61,7 @@ class Messidor_Dataset(Dataset):
         if labels_to_binary:
             labels_df["Retinopathy grade"] = np.where(labels_df["Retinopathy grade"]>1, 1, 0)
 
-        labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
+        # labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
         labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
         return labels_df.reset_index(drop=True)
     
@@ -104,7 +104,7 @@ class Messidor_Dataset(Dataset):
         return subsets
                 
 if __name__ == "__main__":
-    data = Messidor_Dataset("messidor", random_state=13)
+    data = Messidor_Dataset("data/messidor", random_state=13)
     print(len(data))
     data.augment = True
     idx = 12

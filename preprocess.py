@@ -97,6 +97,7 @@ def calc_cropbox_dim(img):
     stride = 100
     img_np = np.asarray(img)[::stride,::stride].sum(2) # converting to np array slow but necessary
     img_np = np.where(img_np>img_np.mean()/5, 1, 0)
+    # axes[1].imshow(img_np)
     # Find nonzero rows and columns (convert back to org indexing)
     non_zero_rows = np.nonzero(img_np.sum(1))[0]*stride
     non_zero_columns = np.nonzero(img_np.sum(0))[0]*stride
@@ -122,18 +123,23 @@ if __name__ == "__main__":
 
     data_directory = r'data\idrid'
     img_dir = os.path.join(data_directory, "Images")
-    seg_dir = os.path.join(data_directory, "Segmentation", "4. Mask")
+    seg_dir = os.path.join(data_directory, "Segmentation", "5. Mask")
     img_preprocessed_dir = os.path.join(data_directory, "Images_Preprocessed")
     seg_preprocessed_dir = os.path.join(data_directory, "Segmentation_Preprocessed")
 
     preprocess_all_images(img_dir, img_preprocessed_dir, "jpg", seg_dir=seg_dir, seg_dir_preprocessed=seg_preprocessed_dir, seg_format="tif")
 
-    # fig, axes = plt.subplots(1,2)
+    # fig, axes = plt.subplots(1,3, figsize=(12,6))
     # start_time = time.time()
-    # image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\diabetic-retinopathy-detection\\train\\train\\10_left.jpeg")
+    # image = cv2.imread(r"C:\\Users\\rmhisje\Documents\\medical_ViT\\data\\eyePACs\\train\\train\\10_left.jpeg")
     # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # axes[0].imshow(image)
-    # image = GrahamPreprocessing(image)
-    # print(time.time()-start_time)
-    # axes[1].imshow(image)
+    # out = GrahamPreprocessing(image)
+    # # print(image)
+    # # print(time.time()-start_time)
+    # axes[2].imshow(out[0])
+    # titles = ["Input Image", "Threshold Mask", "Preprocessed Image"]
+    # for ax, title in zip(axes, titles):
+    #     ax.set_xlabel(title)
+    
     # plt.show()

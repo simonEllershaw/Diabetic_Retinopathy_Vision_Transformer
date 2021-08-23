@@ -30,7 +30,7 @@ class IDRiD_Dataset(Dataset):
         self.seg_dir_preprocessed = os.path.join(self.data_directory, "Segmentation_Preprocessed")
         self.length = len([name for name in os.listdir(self.img_dir) if os.path.isfile(os.path.join(self.img_dir, name))])
         self.indicies = np.arange(self.length)
-        np.random.shuffle(self.indicies)
+        # np.random.shuffle(self.indicies)
 
     def get_fname(self, idx):
         return f"IDRiD_{idx+1:0>2d}"
@@ -53,33 +53,37 @@ class IDRiD_Dataset(Dataset):
         seg = torchvision.transforms.Resize(self.img_size)(seg)
         seg = np.array(seg, dtype="float")
         seg[seg>0] = 1.0
-
         seg_cuml = self.generate_seg_cum(seg)
-
         return img, seg, seg_cuml, fname
 
     def generate_segmentation_masks(self):
         ma_dir = os.path.join(self.seg_dir, "1. Microaneurysms")
         he_dir = os.path.join(self.seg_dir, "2. Haemorrhages")
-        ex_dir = os.path.join(self.seg_dir, "3. Hard Exudates")
-        mask_dir = os.path.join(self.seg_dir, "4. Mask")
+        h_ex_dir = os.path.join(self.seg_dir, "3. Hard Exudates")
+        s_ex_dir = os.path.join(self.seg_dir, "4. Soft Exudates")
+        mask_dir = os.path.join(self.seg_dir, "5. Mask")
         if not os.path.exists(mask_dir):
             os.makedirs(mask_dir)
 
         for sample_num in range(0, len(self)):
             fname = self.get_fname(sample_num)
             seg_mask = cv2.imread(os.path.join(ma_dir, f"{fname}_MA.tif"))
-            seg_mask[:,:,0] = cv2.imread(os.path.join(ex_dir, f"{fname}_EX.tif"))[:,:,2]
+            seg_mask[:,:,0] += cv2.imread(os.path.join(h_ex_dir, f"{fname}_EX.tif"))[:,:,2]
             try:
-                seg_mask[:,:,1] = cv2.imread(os.path.join(he_dir, f"{fname}_HE.tif"))[:,:,2]
+                seg_mask[:,:,1] += cv2.imread(os.path.join(he_dir, f"{fname}_HE.tif"))[:,:,2]
             except:
                 print(f"{fname} has no haemorrage mask")
+            try:
+                seg_mask[:,:,2] += cv2.imread(os.path.join(s_ex_dir, f"{fname}_SE.tif"))[:,:,2]
+                seg_mask[:,:,0] += cv2.imread(os.path.join(s_ex_dir, f"{fname}_SE.tif"))[:,:,2]
+            except:
+                print(f"{fname} has no soft exudate mask")
+            seg_mask = np.clip(seg_mask, 0, 1)
             cv2.imwrite(os.path.join(mask_dir, f"{fname}.tif"), seg_mask)
 
     def generate_seg_cum(self, seg):
         num_patches = self.img_size // self.patch_size
-        seg_cum = seg.reshape(num_patches, self.patch_size, num_patches, self.patch_size, 3).sum(axis=(1, 3))
-        seg_cum[seg_cum>0] = 1
+        seg_cum = seg.reshape(num_patches, self.patch_size, num_patches, self.patch_size, 3).max(axis=(1, 3, -1))
         return seg_cum
 
     def select_subset_of_data(self, subset_start, subset_end):
@@ -97,11 +101,14 @@ class IDRiD_Dataset(Dataset):
                 
 if __name__ == "__main__":
     data = IDRiD_Dataset(r'data\idrid')
+    # data.generate_segmentation_masks()
     fig, axes = plt.subplots(1,3)
-    image, seg, seg_cum, _ = data[0]
-    for ax in axes:
+    image, seg, seg_cum, _ = data[18]
+    titles = ["Input Image", "Annotations", "Patched Annotations"]
+    for ax, title in zip(axes, titles):
         ax.set_xticks([])
         ax.set_yticks([])
+        ax.set_xlabel(title)
         visualisation.imshow(image, ax)
     axes[1].imshow(seg, alpha=0.5)
     seg_cum = seg_cum.repeat(16, axis=0).repeat(16, axis=1)
