@@ -1,22 +1,7 @@
 import pandas as pd
 import os
-import torch
-import json
 import numpy as np
-
-from torch.utils.data import Dataset
-import torchvision
-import cv2
-import random
 from PIL import Image
-import sys
-from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
-from copy import deepcopy
-
-# Test 
-from utils import visualisation
-import matplotlib.pyplot as plt
-import time
 
 from datasets.abstract_DR import Abstract_DR_Dataset
 
