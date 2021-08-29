@@ -1,22 +1,11 @@
-import pandas as pd
+from copy import deepcopy
 import os
-import torch
-import json
+import pandas as pd
 import numpy as np
-
 from torch.utils.data import Dataset
 import torchvision
-import cv2
-import random
 from PIL import Image
-import sys
 from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from copy import deepcopy
-
-# Test 
-from utils import visualisation
-import matplotlib.pyplot as plt
-import time
 
 class EyePACS_Dataset(Dataset):
     def __init__(self, data_directory, img_size=384, use_inception_norm=True, random_state=None, remove_ungradables=True, labels_to_binary=True, max_length=None):
