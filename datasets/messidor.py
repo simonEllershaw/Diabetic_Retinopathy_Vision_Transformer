@@ -14,7 +14,7 @@ from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 from copy import deepcopy
 
 # Test 
-import visualisation
+from utils import visualisation
 import matplotlib.pyplot as plt
 import time
 

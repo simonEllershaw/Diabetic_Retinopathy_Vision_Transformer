@@ -1,11 +1,11 @@
-from torch.optim.lr_scheduler import LambdaLR
 import math
+from torch.optim.lr_scheduler import LambdaLR
 
 #https://github.com/jeonsworld/ViT-pytorch/blob/main/utils/scheduler.py
 class WarmupCosineSchedule(LambdaLR):
     """ Linear warmup and then cosine decay.
         Linearly increases learning rate from 0 to 1 over `warmup_steps` training steps.
-        Decreases learning rate from 1. to 0. over remaining `t_total - warmup_steps` steps         following a cosine curve.
+        Decreases learning rate from 1. to 0. over remaining `t_total - warmup_steps` steps following a cosine curve.
         If `cycles` (default=0.5) is different from default, learning rate follows cosine function after warmup.
     """
     def __init__(self, optimizer, t_total, warmup_steps, cycles=.5, last_epoch=-1):

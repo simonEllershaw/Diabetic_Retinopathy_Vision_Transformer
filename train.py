@@ -1,83 +1,130 @@
-import time
-import torch
+# Standard libary imports
 import os
-import metrics
-import visualisation
+import time
+import sys
+import argparse
+# Deep learning imports
+import timm
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
+import sklearn.metrics
+import sklearn.utils
+import numpy as np
+# Internal imports
+from training import LRSchedules
+from training.train import train_model
+from evaluation import evaluate
+from utils.vision_transformer_utils import resize_ViT
+from utils import visualisation
+from datasets.eyePACS import EyePACS_Dataset
 
-#https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description ='Entry into main training script')
+    # Training variables
+    parser.add_argument('-d', '--data_directory', type = str, nargs = 1, default="data/eyePACs")
+    parser.add_argument('-m', '--model_name', type = str, nargs = 1, default="resnetv2_50x1_bitm_in21k", choices=["vit_small_patch16_224_in21k", "resnetv2_50x1_bitm_in21k", "dino_resnet50", "dino_vits16"])
+    parser.add_argument('-l', '--lr', type = float, nargs = 1, default=0.01)
+    parser.add_argument('-n', '--num_steps', type = int, nargs = 1, default=500)
+    parser.add_argument('-w', '--num_warm_up_steps', type = int, nargs = 1, default=100)
+    parser.add_argument('-s', '--img_size', type = int, nargs = 1, default=224)
+    parser.add_argument('-r', '--resize_model', action="store_true", default=False)
+    # Experiment variables
+    parser.add_argument('-p', '--proportions', type = float, nargs = 1, default=0.1)
+    parser.add_argument('-i', '--use_inception_norm', action="store_true", default=True)
+    parser.add_argument('-g', '--grad_accum', action="store_true", default=True)
+    parser.add_argument('-u', '--remove_ungradables', action="store_true", default=True)
+    parser.add_argument('-a', '--data_aug_train', action="store_true", default=True)
+    args = parser.parse_args()
+    print(args)
+    
+    # Load datasets split into train, val and test
+    dataset_names = ["train", "val", "test"]    
+    dataset_proportions = np.array([0.6, 0.2, 0.2])
+    np.random.seed(13)
+    full_dataset = EyePACS_Dataset(args.data_directory, img_size=args.img_size, random_state=13, use_inception_norm=args.use_inception_norm)
+    # full_dataset =  Messidor_Dataset(data_directory, random_state=13, img_size=img_size)
+    class_names = full_dataset.class_names
+    datasets = full_dataset.create_train_val_test_datasets(dataset_proportions, dataset_names)
+    datasets["train"].augment=args.data_aug_train
+    if args.proportions < 1:
+        datasets["train"].select_subset_of_data(0, int(len(datasets["train"])*args.proportions))
+        datasets["val"].select_subset_of_data(0, int(len(datasets["val"])*args.proportions))
 
-def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm=0):
-    best_loss = float('inf')
-    model_param_fname = os.path.join(run_directory, "model_params.pt")
-    num_epochs_no_improvement = 0
+    # Setup dataloaders
+    batch_size = 512
+    mini_batch_size= 16 if args.img_size==384 else 16
 
-    for epoch in range(1, num_epochs+1):
-        epoch_start_time = time.time()
-        for phase in ['train', 'val']:
-            if phase == 'train':
-                model.train()
-                mini_batch_num = 1
-            else:
-                model.eval()   
-            running_loss = 0.0
-            confusion_matrix = torch.zeros(nb_classes, nb_classes)
-            for inputs, labels, _ in dataloaders[phase]:
-                inputs = inputs.to(device)
-                labels = labels.long().to(device)
-                # forward
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
-                    loss = loss / accumulation_steps
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        if grad_clip_norm > 0:
-                            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
-                        if (mini_batch_num) % accumulation_steps == 0:
-                            optimizer.step()
-                            optimizer.zero_grad()
-                            mini_batch_num = 0
-                            scheduler.step()
-                        mini_batch_num += 1
-                # statistics
-                running_loss += loss.item() * inputs.size(0) * accumulation_steps
-                confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
-            epoch_loss = running_loss / dataset_sizes[phase]
-            print(epoch, phase, epoch_loss)  
-            if phase == 'train':
-                # Update LR
-                writer.add_scalar(tag="general/lr", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
-            elif phase == 'val':
-                # Check if model performance has improved if so save model
-                if epoch_loss < best_loss:
-                    best_loss = epoch_loss
-                    torch.save(model.state_dict(), model_param_fname)
-                    num_epochs_no_improvement = 0
-                    best_conf_matrix = confusion_matrix
-                    best_epoch = epoch
-                elif epoch > warmup_steps:
-                    num_epochs_no_improvement += 1
-            # Log epoch statistics
-            class_labels = list(range(outputs.size(1)))
-            write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, confusion_matrix, class_labels)
-        writer.add_scalar(tag="general/time", scalar_value=time.time()-epoch_start_time, global_step=epoch)
-        if num_epochs_no_improvement == num_epochs_to_converge:
-            break
-    # Return best model and perf metric at end of training
-    confusion_matrix_vis = visualisation.plot_confusion_matrix(best_conf_matrix, class_labels)
-    writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=100+best_epoch)
-    model.load_state_dict(torch.load(model_param_fname))
-    model.eval()
-    return model, best_loss  
+    if not args.grad_accum:
+        scaling = batch_size/mini_batch_size
+        batch_size=mini_batch_size
+        args.lr /= scaling
+        args.num_steps *= scaling
+        args.num_warm_up_steps *= scaling
 
-def write_epoch_statistics_to_tensorboard(writer, phase, epoch, epoch_loss, confusion_matrix, class_labels):
-    # Calc statistics
-    confusion_matrix_vis = visualisation.plot_confusion_matrix(confusion_matrix, class_labels)
-    #Write to tensorboard
-    writer.add_figure(tag="Confusion Matrix/" + phase, figure=confusion_matrix_vis, global_step=epoch)
-    writer.add_scalar(tag=phase + "/loss", scalar_value=epoch_loss, global_step=epoch)
+    accumulation_steps = int(batch_size/mini_batch_size)
+    num_workers = 4
+    dataset_sizes = {name: len(datasets[name]) for name in dataset_names}                  
+    dataloaders = {name: torch.utils.data.DataLoader(datasets[name], batch_size=mini_batch_size,
+                                            shuffle=False, num_workers=num_workers)
+                        for name in ["val", "test"]}   
+    dataloaders["train"] = torch.utils.data.DataLoader(datasets["train"], batch_size=mini_batch_size, shuffle=True, num_workers=num_workers, drop_last = True)
 
+    # Calc class inbalance and so loss function weights
+    data_train_labels = np.array(datasets["train"].get_labels())
+    loss_weights = sklearn.utils.class_weight.compute_class_weight("balanced", classes=np.unique(data_train_labels), y=data_train_labels)
+    loss_weights = torch.tensor(loss_weights).float()
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+    if "dino" in args.model_name:
+        model = torch.hub.load('facebookresearch/dino:main', args.model_name)    
+        if "resnet" in args.model_name:
+            model = torch.nn.Sequential(model, torch.nn.Linear(2048, 2))
+        else:
+            model = torch.nn.Sequential(model, torch.nn.Linear(model.num_features, 2))
+    else:
+        model = timm.create_model(args.model_name, pretrained=True, num_classes=len(class_names)).to(device)
+        if args.resize_model:
+            print("model resize")
+            model = resize_ViT(model, args.img_size)
+    model = model.to(device)    
 
+    num_batches_per_train_epoch = len(datasets["train"]) / batch_size
+    num_epochs = 1#int(args.num_steps//num_batches_per_train_epoch)
+    print(num_epochs)
+    warmup_steps = int(args.num_warm_up_steps//num_batches_per_train_epoch)
+    num_epochs_to_converge = 50
+    grad_clip_norm = 1
+
+    criterion = nn.CrossEntropyLoss(weight=loss_weights.to(device))
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
+    scheduler = LRSchedules.WarmupCosineSchedule(optimizer, args.num_steps, args.num_warm_up_steps)
+
+    dataset_name = f"_{type(full_dataset).__name__}_"
+    model_directory = os.path.join("runs", args.model_name + dataset_name + time.strftime("%m_%d_%H_%M_%S"))
+    os.mkdir(model_directory)
+    print(model_directory)
+    
+    # Init tensorboard
+    writer = SummaryWriter(model_directory)
+    # Add input images to tensorboard for sanity check
+    fig = visualisation.sample_batch(dataloaders["train"], class_names)
+    writer.add_figure('Input/train', fig)
+    fig = visualisation.sample_batch(dataloaders["val"], class_names)
+    writer.add_figure('Input/val', fig)
+
+    # # Main training loop
+    model, best_loss = train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, len(class_names), writer, model_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm)
+
+    # Add sample inference outputs to tensorboard
+    fig = visualisation.sample_batch(dataloaders["train"], class_names, model, device)
+    writer.add_figure('Inference/train', fig)
+    fig = visualisation.sample_batch(dataloaders["val"], class_names, model, device)
+    writer.add_figure('Inference/val', fig)
+
+    writer.close()
+
+    evaluate.evaluate_model(model, device, model_directory, datasets, "val")
+    evaluate.evaluate_model(model, device, model_directory, datasets, "test")

@@ -1,10 +1,9 @@
-import timm
-import torch
 import copy
 import math
+import timm
+import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 
 def resize_ViT(model, new_input_size):
     new_patch_embed = timm.models.layers.patch_embed.PatchEmbed(img_size=384)
