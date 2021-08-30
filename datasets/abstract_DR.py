@@ -5,6 +5,9 @@ import numpy as np
 from torch.utils.data import Dataset
 import torchvision
 from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+import matplotlib.pyplot as plt
+
+from utils import visualisation
 
 class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
     def __init__(self, data_directory, img_size, use_inception_norm, max_length, **kwargs):
@@ -78,3 +81,11 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
     def select_subset_of_data(self, subset_start, subset_end):
         # Use pandas indexing to select subset
         self.labels_df = self.labels_df.iloc[subset_start:subset_end].reset_index(drop=True)
+
+    def visualise_sample(self, idx):
+        img, label, fname = self[idx]
+        fig, ax = plt.subplots()
+        visualisation.imshow(img, ax)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(f"Fname: {fname}, Label: {self.class_names[label]}")
