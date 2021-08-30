@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-from PIL import Image
 
 from datasets.abstract_DR import Abstract_DR_Dataset
 
@@ -23,6 +22,9 @@ class EyePACS_Dataset(Abstract_DR_Dataset):
         labels_df = labels_df.sample(frac=1, random_state=kwargs["random_state"]).reset_index(drop=True)
         # Choose number of samples to keep
         labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
+        # Standard column names between classes
+        labels_df = labels_df.rename(columns={"image": 'image_name'})
+        labels_df["image_name"] = [fname_img + ".jpeg" for fname_img in labels_df["image_name"]]
         return labels_df
 
     def remove_ungradables(self, labels_df):
@@ -34,13 +36,3 @@ class EyePACS_Dataset(Abstract_DR_Dataset):
         labels_df = labels_df.drop(labels_df[labels_df["gradability"]==0].index)
         labels_df = labels_df.drop(columns=['image_name', 'gradability'])
         return labels_df
-
-    def __getitem__(self, idx):
-        # Extract sample's metadata
-        metadata = self.labels_df.loc[idx]
-        label = metadata.level
-        # Load and transform img
-        img_path = os.path.join(self.img_dir_preprocessed, metadata.image + ".jpeg")
-        img = Image.open(img_path)
-        img = self.get_augmentations()(img)
-        return img, label, metadata.image

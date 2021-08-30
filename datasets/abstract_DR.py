@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
+from PIL import Image
 import os
 import numpy as np
 from torch.utils.data import Dataset
@@ -31,10 +32,6 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
     def select_subset_of_data(self, subset_start, subset_end):
         pass
 
-    @abstractmethod
-    def __getitem__(self, idx):
-        pass
-
     def __len__(self):
         return len(self.labels_df)
 
@@ -45,6 +42,16 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
         # Threshold
         labels_df.level = np.where(labels_df.level>1, 1, 0)
         return labels_df
+
+    def __getitem__(self, idx):
+        # Extract sample's metadata
+        metadata = self.labels_df.loc[idx]
+        label = metadata.level
+        # Load and transform img
+        img_path = os.path.join(self.img_dir_preprocessed, metadata.image_name)
+        img = Image.open(img_path)
+        img = self.get_augmentations()(img)
+        return img, label, metadata.image_name
     
     def get_augmentations(self):
         # Resize 1st to minimise computation
