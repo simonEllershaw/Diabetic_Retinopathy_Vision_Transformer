@@ -1,7 +1,7 @@
+import os
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
 from PIL import Image
-import os
 import numpy as np
 from torch.utils.data import Dataset
 import torchvision
@@ -26,10 +26,6 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
 
     @abstractmethod
     def load_labels(self, max_length, **kwargs):
-        pass
-
-    @abstractmethod
-    def select_subset_of_data(self, subset_start, subset_end):
         pass
 
     def __len__(self):
@@ -75,7 +71,6 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
     def create_train_val_test_datasets(self, proportions, dataset_names):
         # Copy subset (so all settings the same) then select subset
         subsets = {subset: deepcopy(self) for subset in dataset_names}
-        
         # Calc how long each subset is and then cumulative sum to find inidices
         lengths = (proportions*len(self)).astype(int)
         split_indicies = np.cumsum(lengths)
