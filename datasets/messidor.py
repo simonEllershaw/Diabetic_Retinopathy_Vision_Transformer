@@ -7,15 +7,15 @@ from datasets.abstract_DR import Abstract_DR_Dataset
 
 
 class Messidor_Dataset(Abstract_DR_Dataset):
-    def __init__(self, data_directory, img_size=384, use_inception_norm=True, random_state=None, labels_to_binary=True, max_length=None):
-        super().__init__(data_directory, img_size, use_inception_norm, random_state, labels_to_binary, max_length)
+    def __init__(self, data_directory, img_size=384, use_inception_norm=True, labels_to_binary=True, max_length=None):
+        super().__init__(data_directory, img_size, use_inception_norm, max_length, labels_to_binary=labels_to_binary)
 
-    def load_labels(self, random_state, max_length, labels_to_binary):
+    def load_labels(self, max_length, **kwargs):
             labels_df = self.load_labels_from_sub_dirs()
             # Tidy up dataframe
             labels_df = labels_df.reset_index()
             labels_df = self.fix_erratas(labels_df)
-            if labels_to_binary:
+            if kwargs["labels_to_binary"]:
                 labels_df["Retinopathy grade"] = np.where(labels_df["Retinopathy grade"]>1, 1, 0)
             labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
             labels_df = labels_df.reset_index(drop=True)
@@ -60,7 +60,4 @@ class Messidor_Dataset(Abstract_DR_Dataset):
         img_path = os.path.join(self.img_dir_preprocessed, img_fname)
         img = Image.open(img_path)
         img = self.get_augmentations()(img)
-        return img, label, img_fname
-
-    def select_subset_of_data(self, subset_start, subset_end):
-        self.labels_df = self.labels_df.iloc[subset_start:subset_end].reset_index(drop=True)    
+        return img, label, img_fname  

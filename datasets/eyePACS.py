@@ -10,17 +10,17 @@ class EyePACS_Dataset(Abstract_DR_Dataset):
         self.labels_fname = os.path.join(data_directory, "trainLabels.csv", "trainLabels.csv")
         self.gradability_fname = os.path.join(data_directory, "eyepacs_gradability_grades.csv")
         # Init dataset
-        super().__init__(data_directory, img_size, use_inception_norm, random_state, labels_to_binary, max_length, remove_ungradables=remove_ungradables)
+        super().__init__(data_directory, img_size, use_inception_norm, max_length, random_state=random_state, labels_to_binary=labels_to_binary, remove_ungradables=remove_ungradables)
 
-    def load_labels(self, random_state, max_length, labels_to_binary, **kwargs):
+    def load_labels(self, max_length, **kwargs):
         # Load label csv to dataframe
         labels_df = pd.read_csv(self.labels_fname)
         if kwargs["remove_ungradables"]:
             labels_df = self.remove_ungradables(labels_df)
-        if labels_to_binary:
+        if kwargs["labels_to_binary"]:
             labels_df = self.labels_to_binary(labels_df)
         # Random shuffle
-        labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
+        labels_df = labels_df.sample(frac=1, random_state=kwargs["random_state"]).reset_index(drop=True)
         # Choose number of samples to keep
         labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
         return labels_df
@@ -44,7 +44,3 @@ class EyePACS_Dataset(Abstract_DR_Dataset):
         img = Image.open(img_path)
         img = self.get_augmentations()(img)
         return img, label, metadata.image
-
-    def select_subset_of_data(self, subset_start, subset_end):
-        # Use pandas indexing to select subset
-        self.labels_df = self.labels_df.iloc[subset_start:subset_end].reset_index(drop=True)

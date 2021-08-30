@@ -7,13 +7,13 @@ import torchvision
 from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
-    def __init__(self, data_directory, img_size, use_inception_norm, random_state, labels_to_binary, max_length, **kwargs):
+    def __init__(self, data_directory, img_size, use_inception_norm, max_length, **kwargs):
         # Setup file structure
         self.data_directory = data_directory
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_images")
         # Load labels
         self.class_names = ["Healthy", "Refer"]
-        self.labels_df = self.load_labels(random_state, max_length, labels_to_binary, **kwargs)
+        self.labels_df = self.load_labels(max_length, **kwargs)
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = img_size
@@ -21,7 +21,7 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
         self.mean = IMAGENET_INCEPTION_MEAN if use_inception_norm else IMAGENET_DEFAULT_MEAN
 
     @abstractmethod
-    def load_labels(self, random_state, max_length, labels_to_binary, **kwargs):
+    def load_labels(self, max_length, **kwargs):
         pass
 
     @abstractmethod
@@ -61,7 +61,7 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
             torchvision.transforms.Normalize(self.mean, self.std)
         ]
         return torchvision.transforms.Compose(augmentations)
-
+    
     def create_train_val_test_datasets(self, proportions, dataset_names):
         # Copy subset (so all settings the same) then select subset
         subsets = {subset: deepcopy(self) for subset in dataset_names}
@@ -74,3 +74,7 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
         for idx, subset in enumerate(subsets.values()):
             subset.select_subset_of_data(split_indicies[idx], split_indicies[idx+1])
         return subsets
+
+    def select_subset_of_data(self, subset_start, subset_end):
+        # Use pandas indexing to select subset
+        self.labels_df = self.labels_df.iloc[subset_start:subset_end].reset_index(drop=True)
