@@ -13,3 +13,4 @@ xlrd
 grad-cam
 ttach
 tqdm
+ipykernel
