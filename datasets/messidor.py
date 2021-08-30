@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import pandas as pd
 import numpy as np
 from PIL import Image
 
@@ -11,24 +11,35 @@ class Messidor_Dataset(Abstract_DR_Dataset):
         super().__init__(data_directory, img_size, use_inception_norm, random_state, labels_to_binary, max_length)
 
     def load_labels(self, random_state, max_length, labels_to_binary):
-            labels_df = pd.DataFrame()
-            for fname in os.listdir(self.data_directory):
-                if fname.endswith(".xls"):
-                    annotations_fname = os.path.join(self.data_directory, fname)
-                    base_labels_df = pd.read_excel(annotations_fname)
-                    base_labels_df["directory"] = fname[11:-4]
-                    # print(base_labels_df.head())
-                    labels_df = labels_df.append(base_labels_df)
+            labels_df = self.load_labels_from_sub_dirs()
+            # Tidy up dataframe
             labels_df = labels_df.reset_index()
             labels_df = self.fix_erratas(labels_df)
             if labels_to_binary:
                 labels_df["Retinopathy grade"] = np.where(labels_df["Retinopathy grade"]>1, 1, 0)
-
-            # labels_df = labels_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
             labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
-            return labels_df.reset_index(drop=True)
+            labels_df = labels_df.reset_index(drop=True)
+            return labels_df
+    
+    def load_labels_from_sub_dirs(self):
+        labels_df = pd.DataFrame()
+        # File structure is a series of subdirectories
+        for item in os.listdir(self.data_directory):
+            if os.path.isdir(os.path.join(self.data_directory, item)):
+                sub_dir = item
+                sub_dir_full_path = os.path.join(self.data_directory, sub_dir)
+                # Each sub_dir has an .xls with labels of images in that sub_dir
+                # Open these and add to labels_df
+                for fname in os.listdir(sub_dir_full_path):
+                    if fname.endswith(".xls"):
+                        annotations_fname = os.path.join(sub_dir_full_path, fname)
+                        base_labels_df = pd.read_excel(annotations_fname)
+                        base_labels_df["directory"] = sub_dir
+                        labels_df = labels_df.append(base_labels_df)
+        return labels_df
     
     def fix_erratas(self, labels_df):
+        # Erratas defined https://www.adcis.net/en/third-party/messidor/
         # Correct incorrect labels
         labels_df.loc[(labels_df["directory"] == "Base11") & (labels_df["Image name"]=="20051020_64007_0100_PP.tif"), "Retinopathy grade"] = 3
         labels_df.loc[(labels_df["directory"] == "Base11") & (labels_df["Image name"]=="20051020_63936_0100_PP.tif"), "Retinopathy grade"] = 1
