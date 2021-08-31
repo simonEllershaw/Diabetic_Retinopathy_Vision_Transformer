@@ -1,8 +1,0 @@
-{
-    "eyePACS":
-    {
-        "label_file": "diabetic-retinopathy-detection\\trainLabels.csv\\trainLabels.csv",
-        "img_dir": "diabetic-retinopathy-detection\\train\\train",
-        "class_names": ["No DR", "Mild", "Moderate", "Severe", "Proliferative"]
-    }
-}
