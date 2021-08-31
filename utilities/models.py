@@ -5,6 +5,25 @@ import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+def load_model(model_name, pretraining, num_classes, img_size=224):
+    if pretraining == "DINO":
+        if model_name == "ResNet50":
+            model = torch.hub.load('facebookresearch/dino:main', "dino_resnet50")
+            model = torch.nn.Sequential(model, torch.nn.Linear(2048, 2))
+        elif model_name == "ViT-S":
+            model = torch.hub.load('facebookresearch/dino:main', "dino_vits16")        
+            model = torch.nn.Sequential(model, torch.nn.Linear(model.num_features, 2))
+        use_inception_norm = False
+    elif pretraining == "21k":
+        if model_name == "ResNet50":
+            model = timm.create_model("resnetv2_50x1_bitm_in21k", pretrained=True, num_classes=num_classes)
+        elif model_name == "ViT-S":
+            model = timm.create_model("vit_small_patch16_224_in21k", pretrained=True, num_classes=num_classes)
+            if img_size != 224:
+                model = resize_ViT(model, img_size)
+        use_inception_norm = True
+    return model, use_inception_norm
+
 def resize_ViT(model, new_input_size):
     new_patch_embed = timm.models.layers.patch_embed.PatchEmbed(img_size=384)
     new_patch_embed.proj = copy.deepcopy(model.patch_embed.proj)
@@ -42,7 +61,6 @@ def calc_pos_embed_similarites(pos_embed, stride=0):
     cos_sim = cos_sim.reshape((length_patch_square, length_patch_square, length_patch_square, length_patch_square))
     return cos_sim
 
-
 def visualise_postional_embeddings(cos_sim):
     # Init plot
     length_patch_square = cos_sim.size(0)
@@ -72,6 +90,8 @@ def visualise_postional_embeddings(cos_sim):
 
 
 if __name__ == "__main__":
+    model = torch.hub.load('facebookresearch/dino:main', "dino_resnet50")
+    exit()
     inp = torch.ones((3, 3, 384, 384))*0.5
     model = timm.create_model("vit_small_patch16_224_in21k", pretrained=True, num_classes=2)
     # model = resize_ViT(model, 384)

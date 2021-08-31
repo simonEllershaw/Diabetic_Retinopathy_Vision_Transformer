@@ -4,7 +4,7 @@ import io
 from PIL import Image
 import torchvision
 import torch
-from utils import inference
+from utilities import inference
 import itertools
 from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 
