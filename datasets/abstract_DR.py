@@ -8,7 +8,7 @@ import torchvision
 from timm.data import IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 import matplotlib.pyplot as plt
 
-from utils import visualisation
+from utilities import visualisation
 
 class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
     def __init__(self, data_directory, img_size, use_inception_norm, max_length, **kwargs):

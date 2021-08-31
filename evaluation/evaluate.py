@@ -11,7 +11,7 @@ import pprint
 import sys
 import time
 import pandas as pd
-from utils.vision_transformer_utils import resize_ViT 
+from utils.models import resize_ViT 
 import json
 from sklearn.metrics import confusion_matrix
 import seaborn as sn
