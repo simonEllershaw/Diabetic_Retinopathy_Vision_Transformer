@@ -5,7 +5,7 @@ from PIL import Image
 from datasets.eyePACS import EyePACS_Dataset
 
 class EyePACS_Masked_Dataset(EyePACS_Dataset):
-    def __init__(self, data_directory, mask_size=4, img_size=384, use_inception_norm=True, random_state=None, max_length=None, remove_ungradables=True):
+    def __init__(self, data_directory, mask_size, img_size=384, use_inception_norm=True, random_state=None, max_length=None, remove_ungradables=True):
         self.mask_size = mask_size
         super().__init__(data_directory, img_size, use_inception_norm, random_state, max_length, remove_ungradables)
         
