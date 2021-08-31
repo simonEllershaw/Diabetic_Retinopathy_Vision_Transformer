@@ -1,11 +1,10 @@
 import time
 import os
 import torch
-from utils import metrics, visualisation
-
-#https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
+from utilities import metrics, visualisation
 
 def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs, device, dataset_sizes, nb_classes, writer, run_directory, warmup_steps, num_epochs_to_converge, accumulation_steps, grad_clip_norm=0):
+    # Training loop 
     best_loss = float('inf')
     model_param_fname = os.path.join(run_directory, "model_params.pt")
     num_epochs_no_improvement = 0
@@ -34,13 +33,14 @@ def train_model(model, dataloaders, optimizer, criterion, scheduler, num_epochs,
                         loss.backward()
                         if grad_clip_norm > 0:
                             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
+                        # Only take step every accumulation_steps (grad accumulation) 
                         if (mini_batch_num) % accumulation_steps == 0:
                             optimizer.step()
                             optimizer.zero_grad()
                             mini_batch_num = 0
                             scheduler.step()
                         mini_batch_num += 1
-                # statistics
+                # Statistics
                 running_loss += loss.item() * inputs.size(0) * accumulation_steps
                 confusion_matrix = metrics.update_conf_matrix(confusion_matrix, labels, preds)
             epoch_loss = running_loss / dataset_sizes[phase]
