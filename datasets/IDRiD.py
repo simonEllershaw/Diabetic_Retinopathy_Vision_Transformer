@@ -13,7 +13,6 @@ class IDRiD_Dataset(Abstract_DR_Dataset):
     def __init__(self, data_directory, img_size=384, patch_size=16, use_inception_norm=None, max_length=None):
         # Setup class specific variables
         self.patch_size = patch_size
-        self.img_dir_preprocessed = os.path.join(data_directory, "preprocessed_images")
         self.seg_dir_preprocessed = os.path.join(data_directory, "preprocessed_seg")
         super().__init__(data_directory, img_size, use_inception_norm, max_length)
 
@@ -25,7 +24,6 @@ class IDRiD_Dataset(Abstract_DR_Dataset):
         # All examples are referable DR cases (as have annoated lesions!)
         levels = np.ones(length, dtype=int)
         labels_df = pd.DataFrame({"image_name": image_names, "seg_name": seg_names, "level": levels})
-        print(labels_df.head())
         return labels_df
 
     def __getitem__(self, idx):
@@ -37,8 +35,7 @@ class IDRiD_Dataset(Abstract_DR_Dataset):
         seg_path = os.path.join(self.seg_dir_preprocessed, metadata.seg_name)
         seg = Image.open(seg_path)
         seg = torchvision.transforms.Resize(self.img_size)(seg)
-        seg = np.array(seg, dtype="float")
-        seg[seg>0] = 1.0
+        seg = np.array(seg)
         seg_cuml = self.generate_seg_cum(seg)
         return img, seg, seg_cuml, label, image_name
 
@@ -47,8 +44,11 @@ class IDRiD_Dataset(Abstract_DR_Dataset):
         return f"IDRiD_{idx+1:0>2d}"
 
     def generate_seg_cum(self, seg):
+        # Binary map in patch_sizexpatch_size grid
+        # If pixel in element contains a lesion whole patch is positive
         num_patches = self.img_size // self.patch_size
         seg_cum = seg.reshape(num_patches, self.patch_size, num_patches, self.patch_size, 3).max(axis=(1, 3, -1))
+        seg_cum[seg_cum>0] = 1
         return seg_cum
 
     def visualise_sample(self, idx):
