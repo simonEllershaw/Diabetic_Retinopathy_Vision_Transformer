@@ -15,14 +15,14 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
         # Setup file structure
         self.data_directory = data_directory
         self.img_dir_preprocessed = os.path.join(self.data_directory, "preprocessed_images")
-        # Load labels
-        self.class_names = ["Healthy", "Refer"]
-        self.labels_df = self.load_labels(max_length, **kwargs)
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = img_size
         self.std = IMAGENET_INCEPTION_STD if use_inception_norm else IMAGENET_DEFAULT_STD
         self.mean = IMAGENET_INCEPTION_MEAN if use_inception_norm else IMAGENET_DEFAULT_MEAN
+        # Load labels
+        self.class_names = ["Healthy", "Refer"]
+        self.labels_df = self.load_labels(max_length, **kwargs)
 
     @abstractmethod
     def load_labels(self, max_length, **kwargs):
@@ -40,14 +40,14 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
         return labels_df
 
     def __getitem__(self, idx):
-        # Extract sample's metadata
-        metadata = self.labels_df.loc[idx]
-        label = metadata.level
+        # Extract sample
+        sample = self.labels_df.loc[idx]
+        label = sample.level
         # Load and transform img
-        img_path = os.path.join(self.img_dir_preprocessed, metadata.image_name)
+        img_path = os.path.join(self.img_dir_preprocessed, sample.image_name)
         img = Image.open(img_path)
         img = self.get_augmentations()(img)
-        return img, label, metadata.image_name
+        return img, label, sample.image_name
     
     def get_augmentations(self):
         # Resize 1st to minimise computation

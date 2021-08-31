@@ -12,10 +12,11 @@ class Messidor_Dataset(Abstract_DR_Dataset):
             labels_df = self.load_labels_from_sub_dirs()
             # Standard column names between classes
             labels_df = labels_df.rename(columns={"Image name": 'image_name', "Retinopathy grade": 'level'})
-            labels_df = labels_df.reset_index()
+            # Remove erratas labeks
             labels_df = self.fix_erratas(labels_df)
-            if kwargs["labels_to_binary"]:
-                labels_df = self.labels_to_binary(labels_df)
+            # Labels to binary
+            labels_df = self.labels_to_binary(labels_df)
+            # Shuffle and reset indexing
             labels_df = labels_df.iloc[:max_length] if max_length is not None else labels_df
             labels_df = labels_df.reset_index(drop=True)
             return labels_df

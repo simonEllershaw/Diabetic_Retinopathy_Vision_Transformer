@@ -4,20 +4,19 @@ import pandas as pd
 from datasets.abstract_DR import Abstract_DR_Dataset
 
 class EyePACS_Dataset(Abstract_DR_Dataset):
-    def __init__(self, data_directory, img_size=384, use_inception_norm=True, random_state=None, labels_to_binary=True, max_length=None, remove_ungradables=True):
+    def __init__(self, data_directory, img_size=384, use_inception_norm=True, random_state=None, max_length=None, remove_ungradables=True):
         # Dataset specific file locations
         self.labels_fname = os.path.join(data_directory, "trainLabels.csv", "trainLabels.csv")
         self.gradability_fname = os.path.join(data_directory, "eyepacs_gradability_grades.csv")
         # Init dataset
-        super().__init__(data_directory, img_size, use_inception_norm, max_length, random_state=random_state, labels_to_binary=labels_to_binary, remove_ungradables=remove_ungradables)
+        super().__init__(data_directory, img_size, use_inception_norm, max_length, random_state=random_state, remove_ungradables=remove_ungradables)
 
     def load_labels(self, max_length, **kwargs):
         # Load label csv to dataframe
         labels_df = pd.read_csv(self.labels_fname)
         if kwargs["remove_ungradables"]:
             labels_df = self.remove_ungradables(labels_df)
-        if kwargs["labels_to_binary"]:
-            labels_df = self.labels_to_binary(labels_df)
+        labels_df = self.labels_to_binary(labels_df)
         # Random shuffle
         labels_df = labels_df.sample(frac=1, random_state=kwargs["random_state"]).reset_index(drop=True)
         # Choose number of samples to keep
