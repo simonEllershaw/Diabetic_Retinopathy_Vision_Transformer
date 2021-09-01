@@ -5,8 +5,8 @@ from datasets.abstract_DR import Abstract_DR_Dataset
 
 
 class Messidor_Dataset(Abstract_DR_Dataset):
-    def __init__(self, data_directory, img_size=384, use_inception_norm=True, labels_to_binary=True, max_length=None):
-        super().__init__(data_directory, img_size, use_inception_norm, max_length, labels_to_binary=labels_to_binary)
+    def __init__(self, data_directory, img_size=384, use_inception_norm=True, max_length=None):
+        super().__init__(data_directory, img_size, use_inception_norm, max_length)
 
     def load_labels(self, max_length, **kwargs):
             labels_df = self.load_labels_from_sub_dirs()
