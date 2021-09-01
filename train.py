@@ -40,7 +40,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
     model, use_inception_norm = models.load_model(args.model, args.pretraining, num_classes=2, img_size=args.img_size)
-    model = model.to(device)   
+    model.to(device)   
 
     # Load datasets split into train, val and test
     dataset_names = ["train", "val", "test"]    
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     grad_clip_norm = 1
 
     # Setup directory with name to unique identify training run and model
-    dir_name = "_".join((args.model, args.pretraining, str(args.img_size), f"{type(full_dataset).__name__}", time.strftime("%m_%d_%H_%M_%S")))
+    dir_name = "-".join((args.model, args.pretraining, str(args.img_size), f"{type(full_dataset).__name__}", time.strftime("%m_%d_%H_%M_%S")))
     model_directory = os.path.join("runs", dir_name)
     os.makedirs(model_directory, exist_ok=True)
     print(model_directory)
