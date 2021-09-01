@@ -6,7 +6,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from datasets.abstract_DR import Abstract_DR_Dataset
-from utils import visualisation
+from utilities import visualisation
 
 
 class IDRiD_Dataset(Abstract_DR_Dataset):

@@ -1,92 +1,38 @@
-from vit_explain.vit_rollout import VITAttentionRollout
-from vit_explain.vit_grad_rollout import VITAttentionGradRollout
 import evaluate
-from eyePACS_masked import EyePACS_Masked_Dataset
-from IDRiD import IDRiD_Dataset
+from datasets.IDRiD import IDRiD_Dataset
 import torchvision
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-import visualisation
+from utilities import visualisation
 import math
 from pytorch_grad_cam import GradCAM
 import cv2
 import sklearn.metrics
 import pandas as pd
 
-class Last_Layer:
-    def __init__(self, model, attention_layer_name='attn_drop'):
-        self.model = model
-        for name, module in self.model.named_modules():
-            if attention_layer_name in name:
-                module.register_forward_hook(self.get_attention)
-        self.attentions = []
-    
+def get_hit_rate(dataset, heatmaps):
+    num_hits = 0
+    for idx in range(len(dataset)):
+        _, _, seg_cum, _, _ = dataset[idx]
+        heatmap = heatmaps[idx]
+        top_index = np.argmax(heatmap.flatten())
+        if seg_cum.flatten()[top_index] == 1:
+            num_hits += 1
+    return num_hits/len(dataset)
 
-    def get_attention(self, module, input, output):
-        self.attentions.append(output.cpu())
-
-    def __call__(self, input_tensor):
-        self.attentions = []
-        with torch.no_grad():
-            output = self.model(input_tensor)
-        return map_attention_of_class_token_last_layer(self.attentions[-1])
-
-def map_attention_of_class_token_last_layer(last_layer_attentions):
-    class_attentions = last_layer_attentions[0, :, 0, 1:]
-    width = int(class_attentions.size(-1)**0.5)
-    class_attentions = class_attentions.reshape(-1, width, width).numpy()
-    class_attentions = class_attentions.sum(0)
-    return class_attentions
-
-def get_random_map(image_batch):
-    num_patches = image_batch.size(-1)//16
-    return np.random.rand(num_patches, num_patches)
-
-def generate_heatmaps(sample, interpreter):
-    image, _, seg_cum, _ = sample
-    heatmap = interpreter(image.unsqueeze(0).to(device))
-    if not (heatmap.shape == seg_cum.shape):
-            heatmap = get_patch_heatmap(heatmap[0])
-    heatmap = heatmap/heatmap.sum()
-    intersect_map = calc_intersect_map(seg_cum, heatmap)
-    return heatmap, intersect_map
-
-def threshold_heatmap(heatmap, mass_threshold=0.6):
-    if mass_threshold < 1:
-        heatmap_sorted = np.sort(heatmap.ravel())
-        total_mass = heatmap.sum()
-        heatmap_cum_sum = heatmap_sorted.cumsum()
-        greater_than_mass_threshold = heatmap_cum_sum > total_mass*(1-mass_threshold)
-        threshold = heatmap_sorted[greater_than_mass_threshold.searchsorted(True)]
-        heatmap = np.where(heatmap>=threshold, heatmap, 0)
-    heatmap /= heatmap.sum()
-    return heatmap
+def calc_weighted_sensitivity(dataset, heatmaps):
+    sensitivity = 0
+    for idx in range(len(dataset)):
+        _, _, seg_cum, _, _ = dataset[idx]
+        heatmap = heatmaps[idx]
+        intersect_map = calc_intersect_map(seg_cum, heatmap)
+        sensitivity += intersect_map.sum()
+    return sensitivity/len(dataset)
 
 def calc_intersect_map(seg_cum, heatmap):
     intersect_map = np.multiply(seg_cum, heatmap)
     return intersect_map
-
-def get_patch_heatmap(heatmap, patch_size=16):
-    num_patches = heatmap.shape[-1] // patch_size
-    return heatmap.reshape(num_patches, patch_size, num_patches, patch_size).sum(axis=(1, 3))
-
-def get_hit_rate(dataset, interpreter):
-    num_hits = 0
-    for idx in range(len(dataset)):
-        _, _, seg_cum, _ = dataset[idx]
-        heatmap, _ = generate_heatmaps(dataset[idx], interpreter)
-        top_index = np.argmax(heatmap.flatten())
-        if seg_cum.flatten()[top_index] == 1:
-            num_hits += 1
-    return num_hits/len(dataset) #
-
-def calc_weighted_sensitivity(dataset, interpreter):
-    sensitivity = 0
-    for idx in range(len(dataset)):
-        _, intersect_map = generate_heatmaps(dataset[idx], interpreter)
-        sensitivity += intersect_map.sum()
-    return sensitivity/len(dataset)
 
 def output_visualisation_column(dataset, interpreter, interpreter_label, axes, num_samples):
     for idx in range(num_samples):
@@ -106,19 +52,14 @@ def calc_intersection_by_type(dataset, interpreter):
         intersect_by_type[-1] += np.count_nonzero(heatmap_threshold) - np.count_nonzero(intersect_map)
     return intersect_by_type/intersect_by_type.sum()
 
-def get_labels_and_pred_array(dataset, interpreter):
-    sample_seg_cum = dataset[0][2]
-    num_patches_per_image = sample_seg_cum.shape[-1]**2
-    y_true = np.zeros(num_patches_per_image*len(dataset))
-    y_pred = np.zeros(num_patches_per_image*len(dataset))
 
+def get_ground_truth_1D_array(dataset, heatmap_size):
+    num_patches = heatmap_size**2
+    y_true = np.zeros(num_patches*len(dataset))
     for idx in range(len(dataset)):
-        _, _, seg_cum, _ = dataset[idx]
-        heatmap, _ = generate_heatmaps(dataset[idx], interpreter)
-        y_true[idx*num_patches_per_image:(idx+1)*num_patches_per_image] = seg_cum.flatten()
-        y_pred[idx*num_patches_per_image:(idx+1)*num_patches_per_image] = heatmap.flatten()
-    
-    return y_true, y_pred
+        _, _, seg_cum, _, _ = dataset[idx]
+        y_true[idx*num_patches:(idx+1)*num_patches] = seg_cum.flatten()
+    return y_true
 
 def calc_pre_rec_curve(y_true, y_pred):
     precision, recall, thresholds = sklearn.metrics.precision_recall_curve(y_true, y_pred)

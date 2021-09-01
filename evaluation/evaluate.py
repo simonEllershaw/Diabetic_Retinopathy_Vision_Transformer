@@ -11,7 +11,7 @@ import pprint
 import sys
 import time
 import pandas as pd
-from utils.models import resize_ViT 
+from utilities.models import resize_ViT 
 import json
 from sklearn.metrics import confusion_matrix
 import seaborn as sn
@@ -21,9 +21,10 @@ def evaluate_model(model, device, model_directory, datasets, phase):
     dataloader = torch.utils.data.DataLoader(datasets[phase], batch_size=64, shuffle=False, num_workers=4) 
     prob_log = get_model_prob_outputs(model, dataloader, device).numpy()
     labels = datasets[phase].get_labels()
-    evaluate_prob_outputs(prob_log, labels, model_directory, phase)
+    dataset_name = f"{type(datasets[phase]).__name__}"
+    evaluate_prob_outputs(prob_log, labels, model_directory, phase, dataset_name)
 
-def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
+def evaluate_prob_outputs(prob_log, labels, model_directory, phase, dataset_name):
     fig, axs = plt.subplots(1, 2)
     metrics_log = {}
 
@@ -31,7 +32,7 @@ def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
     metrics_log["threshold"] = threshold
     # Threshold is defined by validation set not test set!
     if phase != "val":
-        threshold = get_threshold_from_val_metrics(metrics_directory)
+        threshold = get_threshold_from_val_metrics(model_directory)
 
     metrics_log["Pre/Rec AUC"] = auc
     metrics_log["ROC AUC"] = plot_ROC_curve(labels, prob_log, axs[1])
@@ -42,15 +43,11 @@ def evaluate_prob_outputs(prob_log, labels, metrics_directory, phase):
     metrics_log["pred_log"] = pred_log.tolist()
     metrics_log["false_positive_rate"] = calc_false_positive_rate(labels, pred_log)
 
+    metrics_directory_phase = get_metrics_directory(model_directory, dataset_name, phase)
+    os.makedirs(metrics_directory_phase, exist_ok=True) 
 
     axs[0].scatter(metrics_log["recall_score"], metrics_log["precision_score"], marker='x', color='black', label='Proposed Threshold')
     axs[1].scatter(metrics_log["false_positive_rate"], metrics_log["recall_score"], marker='x', color='black', label='Proposed Threshold')
-
-    metrics_directory_phase = os.path.join(metrics_directory, f"metrics_{phase}")
-    if not os.path.exists(metrics_directory):
-        os.mkdir(metrics_directory) 
-    if not os.path.exists(metrics_directory_phase):
-        os.mkdir(metrics_directory_phase) 
 
     axs[0].set_box_aspect(1)
     axs[1].set_box_aspect(1)
@@ -127,7 +124,7 @@ def plot_ROC_curve(labels, prob_log, ax):
     return auc
 
 def get_threshold_from_val_metrics(model_directory):
-    val_metrics_file = os.path.join(model_directory, "metrics_val", "metrics.txt")
+    val_metrics_file = os.path.join(get_metrics_directory(model_directory, "EyePACS_dataset", "val"), "metrics.txt")
     with open(val_metrics_file, "r") as f:
         val_metrics = json.load(f)
     return val_metrics["threshold"]
@@ -138,11 +135,15 @@ def plot_confusion_matrix(labels, predictions, ax, x_label, y_label):
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
 
-def load_metrics(model_directory, phase):
-    with open(os.path.join(model_directory, f"metrics_{phase}", "metrics.txt"), "r") as f:
+def load_metrics(model_directory, dataset_name, phase="test"):
+    metrics_dir = get_metrics_directory(model_directory, dataset_name, phase)
+    with open(os.path.join(metrics_dir, "metrics.txt"), "r") as f:
         model_metrics = json.load(f)
     model_metrics = {key: np.array(value) for key, value in model_metrics.items()}
     return model_metrics
+
+def get_metrics_directory(model_directory, dataset_name, phase):
+    return os.path.join(model_directory, f"metrics_{dataset_name}_{phase}")
 
 def generate_folders_of_disagreements(eval_dir, image_dir, labels, pred_ViT, pred_BiT, labels_df):
     # Create directories
@@ -216,9 +217,9 @@ def calc_false_positive_rate(labels, predictions):
             num_false_positives += 1
     return num_false_positives/num_negatives
 
-def plot_AUC_curves(labels, metrics_list, model_names):
+def plot_AUC_curves(labels, metrics):
     fig, ax = plt.subplots()
-    for metrics, model_name in zip(metrics_list, model_names):
+    for model_name, metrics in metrics.items():
         # Plot precision recall
         plot_precision_recall_curve(labels, metrics["prob_log"], ax, model_name)
         ax.scatter(metrics["recall_score"], metrics["precision_score"], marker='x', color='black')
