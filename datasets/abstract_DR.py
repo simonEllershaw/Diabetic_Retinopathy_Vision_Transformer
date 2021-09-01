@@ -18,8 +18,7 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
         # Setup differing transforms for training and testing
         self.augment = False        
         self.img_size = img_size
-        self.std = IMAGENET_INCEPTION_STD if use_inception_norm else IMAGENET_DEFAULT_STD
-        self.mean = IMAGENET_INCEPTION_MEAN if use_inception_norm else IMAGENET_DEFAULT_MEAN
+        self.set_norm_consts(use_inception_norm)
         # Load labels
         self.class_names = ["Healthy", "Refer"]
         self.labels_df = self.load_labels(max_length, **kwargs)
@@ -33,6 +32,10 @@ class Abstract_DR_Dataset(Dataset, metaclass = ABCMeta):
 
     def get_labels(self):
         return self.labels_df.level
+
+    def set_norm_consts(self, use_inception_norm):
+        self.std = IMAGENET_INCEPTION_STD if use_inception_norm else IMAGENET_DEFAULT_STD
+        self.mean = IMAGENET_INCEPTION_MEAN if use_inception_norm else IMAGENET_DEFAULT_MEAN
 
     def labels_to_binary(self, labels_df):
         # Threshold
