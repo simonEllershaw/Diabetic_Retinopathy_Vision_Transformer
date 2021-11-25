@@ -22,9 +22,11 @@ Download repo and run
 
 The models and datasets used are not contained in this repo and so must be downloaded from external sources. Note to run results.ipynb using precalculated metrics these steps are not required 
 
+JacobGil's excellent [vit_explain repo](https://github.com/jacobgil/vit-explain) is also required as a top level directory for the attenuation visualizations.
+
 ### Models
 
-Models can be download from OneDrive. Then unzip and place in top level folder named models.
+Models can be download from [OneDrive](https://liveuclac-my.sharepoint.com/:u:/g/personal/rmhisje_ucl_ac_uk/Eb3E4zrKKQ9DvjRCCVrRFCoBniWMFYHVxqJx19QgvoIHeA?e=IWnzjC). Then unzip and place in top level folder named models.
 These are models finetuned from the excellent timm library.
 
 ### Datasets
