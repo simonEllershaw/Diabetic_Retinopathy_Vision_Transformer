@@ -6,7 +6,7 @@ This repo was written to perform a number of rapid experiments of finetuning and
 
 Headline finding of this work was that ViT-S had a worse classification performance than a ResNet50 model on this task. Which is slightly against the current CV trend of transformer hype at the moment.
 
-![Pre_Recall_Messidor.JPG](figures\Pre_Recall_Messidor.JPG?raw=true "Precision Recall Curve")
+![Pre_Recall_Messidor.JPG](figures/Pre_Recall_Messidor.JPG?raw=true "Precision Recall Curve")
 
 However, visualizing a transformer's attention is an interesting alternative approach to explainability than the saliency maps currently used by CNNs. 
 
