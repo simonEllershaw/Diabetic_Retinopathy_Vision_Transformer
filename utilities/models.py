@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def load_model(model_name, pretraining, num_classes, img_size=224):
+def load_model(model_name, pretraining, num_classes, img_size=224, model_fpath=None):
     if pretraining == "DINO":
         if model_name == "ResNet50":
             model = torch.hub.load('facebookresearch/dino:main', "dino_resnet50")
@@ -22,6 +22,8 @@ def load_model(model_name, pretraining, num_classes, img_size=224):
             if img_size != 224:
                 model = resize_ViT(model, img_size)
         use_inception_norm = True
+    if model_fpath is not None:
+        model.load_state_dict(torch.load(model_fpath))
     return model, use_inception_norm
 
 def resize_ViT(model, new_input_size):
